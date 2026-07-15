@@ -1,0 +1,177 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Machine {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  type      String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  shiftAssignments ShiftOperatorAssignment[]
+  recipeEntries    BatchRecipeEntry[]
+  delayLogs        DelayLog[]
+}
+
+model Operator {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  shiftAssignments ShiftOperatorAssignment[]
+}
+
+model Design {
+  id         String    @id @default(cuid())
+  name       String    @unique
+  seriesName String?
+  createdAt  DateTime  @default(now())
+  programs     Program[]
+  batchRecipes BatchRecipe[]
+}
+
+model Program {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  designId  String
+  design    Design   @relation(fields: [designId], references: [id])
+  createdAt DateTime @default(now())
+  batchRecipes BatchRecipe[]
+}
+
+model Tool {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  createdAt DateTime @default(now())
+}
+
+model Liquid {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  createdAt DateTime @default(now())
+}
+
+model Powder {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  createdAt DateTime @default(now())
+}
+
+model DelayCode {
+  id              String   @id @default(cuid())
+  code            String   @unique
+  description     String
+  category        String
+  isRobotSpecific Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  delayLogs DelayLog[]
+}
+
+model Shift {
+  id          String    @id @default(cuid())
+  date        String
+  shiftNumber Int
+  startTime   String
+  endTime     String?
+  status      String    @default("ACTIVE")
+  startedBy   String
+  notes       String?
+  createdAt   DateTime  @default(now())
+  operatorAssignments ShiftOperatorAssignment[]
+  batchRecipes        BatchRecipe[]
+  productionRecords   ProductionRecord[]
+  delayLogs           DelayLog[]
+}
+
+model ShiftOperatorAssignment {
+  id         String   @id @default(cuid())
+  shiftId    String
+  shift      Shift    @relation(fields: [shiftId], references: [id])
+  machineId  String
+  machine    Machine  @relation(fields: [machineId], references: [id])
+  operatorId String
+  operator   Operator @relation(fields: [operatorId], references: [id])
+  createdAt  DateTime @default(now())
+}
+
+model BatchRecipe {
+  id           String   @id @default(cuid())
+  batchNumber  String
+  shiftId      String
+  shift        Shift    @relation(fields: [shiftId], references: [id])
+  designId     String
+  design       Design   @relation(fields: [designId], references: [id])
+  programId    String
+  program      Program  @relation(fields: [programId], references: [id])
+  targetSlabs  Int?
+  notes        String?
+  createdAt    DateTime @default(now())
+  entries           BatchRecipeEntry[]
+  productionRecords ProductionRecord[]
+}
+
+model BatchRecipeEntry {
+  id              String      @id @default(cuid())
+  batchRecipeId   String
+  batchRecipe     BatchRecipe @relation(fields: [batchRecipeId], references: [id])
+  machineId       String
+  machine         Machine     @relation(fields: [machineId], references: [id])
+  toolName        String?
+  liquidName      String?
+  powderName      String?
+  rollerHeight    String?
+  targetCycleTime Int?
+  notes           String?
+  @@unique([batchRecipeId, machineId])
+}
+
+model ProductionRecord {
+  id            String      @id @default(cuid())
+  slabNumber    String
+  shiftId       String
+  shift         Shift       @relation(fields: [shiftId], references: [id])
+  batchRecipeId String
+  batchRecipe   BatchRecipe @relation(fields: [batchRecipeId], references: [id])
+  status        String      @default("COMPLETED")
+  bodyWeight    Float?
+  thickness     Float?
+  remarks       String?
+  createdAt     DateTime    @default(now())
+  machineEntries MachineEntry[]
+  delayLogs      DelayLog[]
+}
+
+model MachineEntry {
+  id                 String           @id @default(cuid())
+  productionRecordId String
+  productionRecord   ProductionRecord @relation(fields: [productionRecordId], references: [id])
+  machineName        String
+  inTime             String?
+  outTime            String?
+  actualCycleTime    Int?
+  notes              String?
+  @@unique([productionRecordId, machineName])
+}
+
+model DelayLog {
+  id                 String            @id @default(cuid())
+  shiftId            String
+  shift              Shift             @relation(fields: [shiftId], references: [id])
+  productionRecordId String?
+  productionRecord   ProductionRecord? @relation(fields: [productionRecordId], references: [id])
+  machineId          String?
+  machine            Machine?          @relation(fields: [machineId], references: [id])
+  machineName        String?
+  delayCodeId        String
+  delayCode          DelayCode         @relation(fields: [delayCodeId], references: [id])
+  durationMinutes    Int
+  startTime          String?
+  endTime            String?
+  remarks            String?
+  createdAt          DateTime          @default(now())
+}

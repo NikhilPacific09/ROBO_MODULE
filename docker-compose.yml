@@ -1,0 +1,13 @@
+version: "3.9"
+services:
+  robo-module:
+    build: .
+    ports:
+      - "3000:3000"
+    volumes:
+      - db-data:/app/prisma
+    environment:
+      DATABASE_URL: "file:/app/prisma/prod.db"
+    restart: unless-stopped
+volumes:
+  db-data:
