@@ -13,17 +13,8 @@ model Machine {
   type      String
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
-  shiftAssignments ShiftOperatorAssignment[]
-  recipeEntries    BatchRecipeEntry[]
-  delayLogs        DelayLog[]
-}
-
-model Operator {
-  id        String   @id @default(cuid())
-  name      String   @unique
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  shiftAssignments ShiftOperatorAssignment[]
+  recipeEntries BatchRecipeEntry[]
+  delayLogs     DelayLog[]
 }
 
 model Design {
@@ -73,30 +64,22 @@ model DelayCode {
 }
 
 model Shift {
-  id          String    @id @default(cuid())
-  date        String
-  shiftNumber Int
-  startTime   String
-  endTime     String?
-  status      String    @default("ACTIVE")
-  startedBy   String
-  notes       String?
-  createdAt   DateTime  @default(now())
-  operatorAssignments ShiftOperatorAssignment[]
-  batchRecipes        BatchRecipe[]
-  productionRecords   ProductionRecord[]
-  delayLogs           DelayLog[]
-}
-
-model ShiftOperatorAssignment {
-  id         String   @id @default(cuid())
-  shiftId    String
-  shift      Shift    @relation(fields: [shiftId], references: [id])
-  machineId  String
-  machine    Machine  @relation(fields: [machineId], references: [id])
-  operatorId String
-  operator   Operator @relation(fields: [operatorId], references: [id])
-  createdAt  DateTime @default(now())
+  id               String    @id @default(cuid())
+  date             String
+  shiftNumber      Int
+  startTime        String
+  endTime          String?
+  status           String    @default("ACTIVE")
+  operatorName     String
+  notes            String?
+  // Fixed cycle times for Roycuts (set once per shift — applies to all slabs)
+  roycut1CycleTime Int?
+  roycut2CycleTime Int?
+  roycut3CycleTime Int?
+  createdAt        DateTime  @default(now())
+  batchRecipes      BatchRecipe[]
+  productionRecords ProductionRecord[]
+  delayLogs         DelayLog[]
 }
 
 model BatchRecipe {
@@ -108,7 +91,6 @@ model BatchRecipe {
   design       Design   @relation(fields: [designId], references: [id])
   programId    String
   program      Program  @relation(fields: [programId], references: [id])
-  targetSlabs  Int?
   notes        String?
   createdAt    DateTime @default(now())
   entries           BatchRecipeEntry[]
@@ -125,37 +107,25 @@ model BatchRecipeEntry {
   liquidName      String?
   powderName      String?
   rollerHeight    String?
-  targetCycleTime Int?
   notes           String?
   @@unique([batchRecipeId, machineId])
 }
 
 model ProductionRecord {
-  id            String      @id @default(cuid())
-  slabNumber    String
-  shiftId       String
-  shift         Shift       @relation(fields: [shiftId], references: [id])
-  batchRecipeId String
-  batchRecipe   BatchRecipe @relation(fields: [batchRecipeId], references: [id])
-  status        String      @default("COMPLETED")
-  bodyWeight    Float?
-  thickness     Float?
-  remarks       String?
-  createdAt     DateTime    @default(now())
-  machineEntries MachineEntry[]
-  delayLogs      DelayLog[]
-}
-
-model MachineEntry {
-  id                 String           @id @default(cuid())
-  productionRecordId String
-  productionRecord   ProductionRecord @relation(fields: [productionRecordId], references: [id])
-  machineName        String
-  inTime             String?
-  outTime            String?
-  actualCycleTime    Int?
-  notes              String?
-  @@unique([productionRecordId, machineName])
+  id              String      @id @default(cuid())
+  slabNumber      String
+  shiftId         String
+  shift           Shift       @relation(fields: [shiftId], references: [id])
+  batchRecipeId   String?
+  batchRecipe     BatchRecipe? @relation(fields: [batchRecipeId], references: [id])
+  inTime          String?     // Roycut1 entry time
+  outTime         String?     // Roycut3 exit time
+  roymixCycleTime Int?        // RoyMix cycle time in seconds (varies per slab)
+  thickness       Float?
+  status          String      @default("COMPLETED")
+  remarks         String?
+  createdAt       DateTime    @default(now())
+  delayLogs       DelayLog[]
 }
 
 model DelayLog {

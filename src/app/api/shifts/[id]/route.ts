@@ -1,23 +1,28 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-export async function GET(_: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
+
+export async function GET(_: NextRequest, { params }: { params: { id: string } }) {
   const shift = await prisma.shift.findUnique({
-    where: { id },
+    where: { id: params.id },
     include: {
-      operatorAssignments: { include: { machine: true, operator: true } },
-      batchRecipes: { include: { design: true, program: true, _count: { select: { productionRecords: true } } } },
-      productionRecords: { include: { batchRecipe: { include: { design: true } }, machineEntries: true }, orderBy: { createdAt: "desc" } },
+      batchRecipes: { include: { design: true, program: true, entries: { include: { machine: true } } } },
+      productionRecords: { orderBy: { createdAt: "desc" } },
       delayLogs: { include: { delayCode: true }, orderBy: { createdAt: "desc" } },
-      _count: { select: { productionRecords: true } },
     },
   });
-  if (!shift) return NextResponse.json({ error: "not found" }, { status: 404 });
+  if (!shift) return NextResponse.json({ error: "Not found" }, { status: 404 });
   return NextResponse.json(shift);
 }
-export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
+
+export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
   const body = await req.json();
-  const shift = await prisma.shift.update({ where: { id }, data: body });
+  const data: Record<string, unknown> = {};
+  if (body.status)            data.status = body.status;
+  if (body.endTime)           data.endTime = body.endTime;
+  if (body.notes !== undefined) data.notes = body.notes;
+  if (body.roycut1CycleTime !== undefined) data.roycut1CycleTime = body.roycut1CycleTime ? Number(body.roycut1CycleTime) : null;
+  if (body.roycut2CycleTime !== undefined) data.roycut2CycleTime = body.roycut2CycleTime ? Number(body.roycut2CycleTime) : null;
+  if (body.roycut3CycleTime !== undefined) data.roycut3CycleTime = body.roycut3CycleTime ? Number(body.roycut3CycleTime) : null;
+  const shift = await prisma.shift.update({ where: { id: params.id }, data });
   return NextResponse.json(shift);
 }
