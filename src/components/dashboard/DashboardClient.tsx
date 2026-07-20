@@ -148,7 +148,7 @@ export default function DashboardClient({ activeShift, totalSlabs, totalDelayMin
                   className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-gray-50 border border-gray-100">
                   <div>
                     <p className="text-sm font-medium text-gray-800">#{r.slabNumber}</p>
-                    <p className="text-xs text-gray-400">{r.batchRecipe?.design.name || "—"}</p>
+                    <p className="text-xs text-gray-400">{r.batchRecipe?.designName || "—"}</p>
                   </div>
                   <div className="text-right">
                     {r.inTime && <p className="text-xs text-gray-500">In: {r.inTime}</p>}

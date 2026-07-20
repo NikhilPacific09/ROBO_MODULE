@@ -1,26 +1,30 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { formatDate, fmtDuration, getDurationMinutes } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
-const STATUS_COLOR: Record<string, string> = {
-  COMPLETED: "bg-green-100 text-green-700",
-  REJECTED: "bg-red-100 text-red-700",
-  ON_HOLD: "bg-yellow-100 text-yellow-700",
-};
-const MACHINE_ACCENT: Record<string, string> = {
-  "Roycut-1": "bg-blue-500", "Roycut-2": "bg-indigo-500", "Roycut-3": "bg-violet-500", "Roymix": "bg-emerald-500",
-};
+function getDurationMins(t1: string, t2: string): number | null {
+  try {
+    const [h1, m1] = t1.split(":").map(Number);
+    const [h2, m2] = t2.split(":").map(Number);
+    const diff = (h2 * 60 + m2) - (h1 * 60 + m1);
+    return diff >= 0 ? diff : null;
+  } catch { return null; }
+}
+
+function fmtMins(m: number) {
+  const h = Math.floor(m / 60);
+  const min = m % 60;
+  return h > 0 ? `${h}h ${min}m` : `${min}m`;
+}
 
 export default async function ProductionViewPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const record = await prisma.productionRecord.findUnique({
     where: { id },
     include: {
-      batchRecipe: { include: { design: true, program: true, entries: { include: { machine: true } } } },
-      machineEntries: true,
+      batchRecipe: { include: { entries: { include: { machine: true } } } },
       delayLogs: { include: { delayCode: true } },
       shift: true,
     },
@@ -28,33 +32,35 @@ export default async function ProductionViewPage({ params }: { params: Promise<{
   if (!record) notFound();
 
   const totalDelay = record.delayLogs.reduce((s, d) => s + d.durationMinutes, 0);
-  const r1 = record.machineEntries.find(e => e.machineName === "Roycut-1");
-  const r3 = record.machineEntries.find(e => e.machineName === "Roycut-3") || record.machineEntries.find(e => e.machineName === "Roycut-2");
-  const totalDuration = r1?.inTime && r3?.outTime ? getDurationMinutes(r1.inTime, r3.outTime) : null;
+  const totalDuration = record.inTime && record.outTime
+    ? getDurationMins(record.inTime, record.outTime)
+    : null;
 
   return (
-    <div className="space-y-5 max-w-5xl">
+    <div className="space-y-5 max-w-4xl">
       <div className="flex items-center justify-between">
         <div>
           <div className="flex items-center gap-3 flex-wrap">
             <Link href="/production" className="text-sm text-gray-400 hover:text-gray-600">← Production</Link>
             <span className="text-gray-300">/</span>
             <h1 className="text-2xl font-bold text-gray-900">Slab {record.slabNumber}</h1>
-            <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${STATUS_COLOR[record.status]}`}>{record.status}</span>
+            <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">{record.status}</span>
           </div>
           <p className="text-xs text-gray-400 mt-1">
-            Batch: {record.batchRecipe.batchNumber} · {record.batchRecipe.design.name} · {formatDate(record.shift.date)} · Shift {record.shift.shiftNumber}
+            {record.batchRecipe ? `${record.batchRecipe.designName} · ${record.batchRecipe.programName} · ` : ""}
+            {record.shift.date} · Shift {record.shift.shiftNumber} · {record.shift.operatorName}
           </p>
         </div>
       </div>
 
-      {/* Summary strip */}
+      {/* Summary */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          { label: "Design", value: record.batchRecipe.design.name },
-          { label: "Program", value: record.batchRecipe.program.name },
-          { label: "Body Weight", value: record.bodyWeight ? `${record.bodyWeight} kg` : "—" },
-          { label: "Total Duration", value: totalDuration !== null ? fmtDuration(totalDuration) : "—" },
+          { label: "Design", value: record.batchRecipe?.designName ?? "—" },
+          { label: "Program", value: record.batchRecipe?.programName ?? "—" },
+          { label: "Thickness", value: record.thickness ? `${record.thickness} mm` : "—" },
+          { label: "Total Duration", value: totalDuration !== null ? fmtMins(totalDuration) : "—" },
+          { label: "RoyMix Body Wt", value: record.roymixBodyWeight ? `${record.roymixBodyWeight} kg` : "—" },
         ].map(s => (
           <div key={s.label} className="bg-white rounded-xl border border-gray-200 px-4 py-3">
             <p className="text-xs text-gray-400 uppercase tracking-wide">{s.label}</p>
@@ -63,47 +69,59 @@ export default async function ProductionViewPage({ params }: { params: Promise<{
         ))}
       </div>
 
-      {/* Machine Entries */}
+      {/* Timing */}
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
-        <h2 className="font-semibold text-gray-800 mb-4">Machine Times</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {record.machineEntries.map(e => {
-            const recipeEntry = record.batchRecipe.entries.find(re => re.machine.name === e.machineName);
-            const duration = e.inTime && e.outTime ? getDurationMinutes(e.inTime, e.outTime) : null;
-            const targetSec = recipeEntry?.targetCycleTime;
-            const actualSec = e.actualCycleTime;
-            const diff = targetSec && actualSec ? actualSec - targetSec : null;
-            return (
-              <div key={e.id} className="border border-gray-100 rounded-xl p-4">
-                <div className="flex items-center gap-2 mb-3">
-                  <span className={`w-2 h-5 rounded-full ${MACHINE_ACCENT[e.machineName] || "bg-gray-400"}`} />
-                  <span className="font-medium text-gray-800">{e.machineName}</span>
-                  {duration !== null && <span className="ml-auto text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">⏱ {fmtDuration(duration)}</span>}
-                </div>
-                <div className="grid grid-cols-3 gap-2 text-sm">
-                  <div><p className="text-xs text-gray-400">In</p><p className="font-medium">{e.inTime || "—"}</p></div>
-                  <div><p className="text-xs text-gray-400">Out</p><p className="font-medium">{e.outTime || "—"}</p></div>
-                  <div>
-                    <p className="text-xs text-gray-400">Cycle</p>
-                    <p className={`font-medium ${diff !== null && diff > 0 ? "text-red-600" : diff !== null && diff < 0 ? "text-green-600" : ""}`}>
-                      {actualSec ? `${actualSec}s` : "—"}
-                      {diff !== null && <span className="text-xs ml-1">({diff > 0 ? "+" : ""}{diff}s)</span>}
-                    </p>
-                  </div>
-                </div>
-                {recipeEntry && (
-                  <div className="mt-2 flex flex-wrap gap-1">
-                    {recipeEntry.toolName && <span className="text-xs bg-gray-50 text-gray-500 px-2 py-0.5 rounded">🔧 {recipeEntry.toolName}</span>}
-                    {recipeEntry.liquidName && <span className="text-xs bg-blue-50 text-blue-600 px-2 py-0.5 rounded">💧 {recipeEntry.liquidName}</span>}
-                    {recipeEntry.powderName && <span className="text-xs bg-orange-50 text-orange-600 px-2 py-0.5 rounded">🪨 {recipeEntry.powderName}</span>}
-                    {recipeEntry.rollerHeight && <span className="text-xs bg-slate-50 text-slate-500 px-2 py-0.5 rounded">📏 {recipeEntry.rollerHeight}mm</span>}
-                  </div>
-                )}
-              </div>
-            );
-          })}
+        <h2 className="font-semibold text-gray-800 mb-4">Machine Timing</h2>
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+          <div className="bg-blue-50 rounded-lg p-3">
+            <p className="text-xs text-blue-500 mb-1">In Time (Roycut-1)</p>
+            <p className="text-lg font-bold text-blue-800">{record.inTime || "—"}</p>
+          </div>
+          <div className="bg-violet-50 rounded-lg p-3">
+            <p className="text-xs text-violet-500 mb-1">Out Time (Roycut-3)</p>
+            <p className="text-lg font-bold text-violet-800">{record.outTime || "—"}</p>
+          </div>
+          <div className="bg-emerald-50 rounded-lg p-3">
+            <p className="text-xs text-emerald-500 mb-1">RoyMix Cycle Time</p>
+            <p className="text-lg font-bold text-emerald-800">{record.roymixCycleTime ? `${record.roymixCycleTime}s` : "—"}</p>
+          </div>
+        </div>
+
+        {/* Shift cycle times */}
+        <div className="mt-4 grid grid-cols-3 gap-3">
+          {[
+            { label: "Roycut-1 CT (shift)", val: record.shift.roycut1CycleTime },
+            { label: "Roycut-2 CT (shift)", val: record.shift.roycut2CycleTime },
+            { label: "Roycut-3 CT (shift)", val: record.shift.roycut3CycleTime },
+          ].map(({ label, val }) => (
+            <div key={label} className="bg-gray-50 rounded-lg p-2 text-center">
+              <p className="text-xs text-gray-400">{label}</p>
+              <p className="text-sm font-semibold text-gray-600 mt-0.5">{val ? `${val}s` : "—"}</p>
+            </div>
+          ))}
         </div>
       </div>
+
+      {/* Batch recipe entries */}
+      {record.batchRecipe && record.batchRecipe.entries.length > 0 && (
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+          <h2 className="font-semibold text-gray-800 mb-4">Batch Recipe Settings</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {record.batchRecipe.entries.map(e => (
+              <div key={e.id} className="border border-gray-100 rounded-lg p-3">
+                <p className="font-medium text-gray-700 mb-2">{e.machine.name}</p>
+                <div className="flex flex-wrap gap-1 text-xs">
+                  {e.toolName && <span className="bg-gray-50 text-gray-500 px-2 py-0.5 rounded">🔧 {e.toolName}</span>}
+                  {e.liquidName && <span className="bg-blue-50 text-blue-600 px-2 py-0.5 rounded">💧 {e.liquidName}</span>}
+                  {e.powderName && <span className="bg-orange-50 text-orange-600 px-2 py-0.5 rounded">🪨 {e.powderName}</span>}
+                  {e.rollerHeight && <span className="bg-slate-50 text-slate-500 px-2 py-0.5 rounded">📏 {e.rollerHeight}mm</span>}
+                  {e.targetCycleTime && <span className="bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded">⏱ {e.targetCycleTime}s target</span>}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Delays */}
       {record.delayLogs.length > 0 && (

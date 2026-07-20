@@ -1,12 +1,15 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+
+interface Operator { id: string; name: string; }
 
 export default function StartShiftPage() {
   const router = useRouter();
   const today = new Date().toISOString().slice(0, 10);
   const nowTime = `${String(new Date().getHours()).padStart(2,"0")}:${String(new Date().getMinutes()).padStart(2,"0")}`;
 
+  const [operators, setOperators] = useState<Operator[]>([]);
   const [form, setForm] = useState({
     date: today, shiftNumber: "1", startTime: nowTime,
     operatorName: "", notes: "",
@@ -14,6 +17,10 @@ export default function StartShiftPage() {
   });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    fetch("/api/operators?active=true").then(r => r.json()).then(setOperators);
+  }, []);
 
   const set = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }));
   const inp = "w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400";
@@ -61,9 +68,14 @@ export default function StartShiftPage() {
               <input type="time" value={form.startTime} onChange={e => set("startTime", e.target.value)} className={inp} required />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Operator Name <span className="text-red-500">*</span></label>
-              <input value={form.operatorName} onChange={e => set("operatorName", e.target.value)}
-                placeholder="e.g. Ahmed Ali" className={inp} required />
+              <label className="block text-sm font-medium text-gray-700 mb-1">Operator <span className="text-red-500">*</span></label>
+              <select value={form.operatorName} onChange={e => set("operatorName", e.target.value)} className={inp} required>
+                <option value="">Select Operator</option>
+                {operators.map(o => <option key={o.id} value={o.name}>{o.name}</option>)}
+              </select>
+              {operators.length === 0 && (
+                <p className="text-xs text-orange-500 mt-1">No operators found. <a href="/masters/operators" className="underline">Add operators</a> first.</p>
+              )}
             </div>
             <div className="col-span-2">
               <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>

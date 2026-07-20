@@ -1,23 +1,11 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
-export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
-  try {
-    const { id } = await params;
-    const body = await request.json();
-    const dc = await prisma.delayCode.update({ where: { id }, data: body });
-    return NextResponse.json(dc);
-  } catch (e) {
-    return NextResponse.json({ error: "Failed to update delay code" }, { status: 500 });
-  }
-}
+interface RouteContext { params: Promise<{ id: string }> }
 
-export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
-  try {
-    const { id } = await params;
-    await prisma.delayCode.delete({ where: { id } });
-    return NextResponse.json({ success: true });
-  } catch (e) {
-    return NextResponse.json({ error: "Failed to delete delay code" }, { status: 500 });
-  }
+export async function GET(_req: Request, ctx: RouteContext) {
+  const { id } = await ctx.params;
+  const code = await prisma.delayCode.findUnique({ where: { id } });
+  if (!code) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  return NextResponse.json(code);
 }

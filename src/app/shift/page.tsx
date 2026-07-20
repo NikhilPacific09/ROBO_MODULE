@@ -7,7 +7,7 @@ interface Shift {
   id: string; shiftNumber: number; date: string; operatorName: string;
   startTime: string; endTime: string | null; status: string; notes: string | null;
   roycut1CycleTime: number | null; roycut2CycleTime: number | null; roycut3CycleTime: number | null;
-  batchRecipes: { id: string; batchNumber: string; design: { name: string }; program: { name: string } }[];
+  batchRecipes: { id: string; designName: string; programName: string; targetSlabs: number | null; _count?: { productionRecords: number } }[];
   productionRecords: { id: string; slabNumber: string; inTime: string | null; outTime: string | null; roymixCycleTime: number | null; thickness: number | null; status: string; createdAt: string }[];
   delayLogs: { id: string; durationMinutes: number; startTime: string | null; remarks: string | null; delayCode: { code: string; description: string; category: string } }[];
 }
@@ -92,24 +92,37 @@ export default function ShiftPage() {
 
       {/* Quick Actions */}
       {shift.status === "ACTIVE" && (
-        <div className="grid grid-cols-2 gap-4">
-          <Link href="/production/new"
-            className="flex items-center gap-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl p-4 transition">
-            <span className="text-2xl">➕</span>
-            <div>
-              <p className="font-semibold">New Slab Entry</p>
-              <p className="text-xs text-blue-200">Log a produced slab</p>
-            </div>
-          </Link>
+        <>
+          {/* Primary action: Start New Batch */}
           <Link href="/batch/new"
-            className="flex items-center gap-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl p-4 transition">
+            className="block w-full flex items-center justify-center gap-3 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white rounded-xl p-5 transition shadow-lg">
             <span className="text-2xl">📦</span>
             <div>
-              <p className="font-semibold">Batch Setup</p>
-              <p className="text-xs text-indigo-200">Configure new batch</p>
+              <p className="font-bold text-lg">Start New Batch</p>
+              <p className="text-xs text-indigo-200">Configure batch, select machines & ingredients</p>
             </div>
           </Link>
-        </div>
+
+          {/* Secondary actions row */}
+          <div className="grid grid-cols-2 gap-4 mt-0">
+            <Link href="/production/new"
+              className="flex items-center gap-3 bg-white hover:bg-blue-50 border border-blue-200 text-blue-700 rounded-xl p-4 transition">
+              <span className="text-2xl">➕</span>
+              <div>
+                <p className="font-semibold">Log Slab</p>
+                <p className="text-xs text-blue-400">Record produced slab</p>
+              </div>
+            </Link>
+            <Link href="/delays"
+              className="flex items-center gap-3 bg-white hover:bg-orange-50 border border-orange-200 text-orange-700 rounded-xl p-4 transition">
+              <span className="text-2xl">⏱️</span>
+              <div>
+                <p className="font-semibold">Log Delay</p>
+                <p className="text-xs text-orange-400">Record downtime</p>
+              </div>
+            </Link>
+          </div>
+        </>
       )}
 
       {/* KPI row */}
@@ -164,9 +177,10 @@ export default function ShiftPage() {
               {shift.batchRecipes.map(b => (
                 <div key={b.id} className="flex justify-between items-center py-2 border-b border-gray-50 last:border-0">
                   <div>
-                    <p className="text-sm font-medium text-gray-800">{b.batchNumber}</p>
-                    <p className="text-xs text-gray-400">{b.design.name} · {b.program.name}</p>
+                    <p className="text-sm font-medium text-gray-800">{b.designName}</p>
+                    <p className="text-xs text-gray-400">{b.programName}{b.targetSlabs ? ` · Target: ${b.targetSlabs} slabs` : ""}</p>
                   </div>
+                  {b._count && <span className="text-xs text-gray-400">{b._count.productionRecords} slabs</span>}
                 </div>
               ))}
             </div>

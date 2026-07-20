@@ -53,6 +53,13 @@ model Powder {
   createdAt DateTime @default(now())
 }
 
+model Operator {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+}
+
 model DelayCode {
   id              String   @id @default(cuid())
   code            String   @unique
@@ -60,7 +67,7 @@ model DelayCode {
   category        String
   isRobotSpecific Boolean  @default(false)
   createdAt       DateTime @default(now())
-  delayLogs DelayLog[]
+  delayLogs       DelayLog[]
 }
 
 model Shift {
@@ -70,7 +77,7 @@ model Shift {
   startTime        String
   endTime          String?
   status           String    @default("ACTIVE")
-  operatorName     String
+  operatorName     String    @default("")
   notes            String?
   // Fixed cycle times for Roycuts (set once per shift — applies to all slabs)
   roycut1CycleTime Int?
@@ -83,19 +90,21 @@ model Shift {
 }
 
 model BatchRecipe {
-  id           String   @id @default(cuid())
-  batchNumber  String
-  shiftId      String
-  shift        Shift    @relation(fields: [shiftId], references: [id])
-  designId     String
-  design       Design   @relation(fields: [designId], references: [id])
-  programId    String
-  program      Program  @relation(fields: [programId], references: [id])
-  notes        String?
-  createdAt    DateTime @default(now())
-  entries           BatchRecipeEntry[]
-  productionRecords ProductionRecord[]
-}
+   id           String   @id @default(cuid())
+   shiftId      String
+   shift        Shift    @relation(fields: [shiftId], references: [id])
+   designId     String?
+   design       Design?  @relation(fields: [designId], references: [id])
+   programId    String?
+   program      Program? @relation(fields: [programId], references: [id])
+   designName   String   @default("")
+   programName  String   @default("")
+   targetSlabs  Int?
+   notes        String?
+   createdAt    DateTime @default(now())
+   entries           BatchRecipeEntry[]
+   productionRecords ProductionRecord[]
+ }
 
 model BatchRecipeEntry {
   id              String      @id @default(cuid())
@@ -107,6 +116,7 @@ model BatchRecipeEntry {
   liquidName      String?
   powderName      String?
   rollerHeight    String?
+  targetCycleTime Int?        // Target cycle time in seconds (fixed for production run)
   notes           String?
   @@unique([batchRecipeId, machineId])
 }
@@ -118,9 +128,10 @@ model ProductionRecord {
   shift           Shift       @relation(fields: [shiftId], references: [id])
   batchRecipeId   String?
   batchRecipe     BatchRecipe? @relation(fields: [batchRecipeId], references: [id])
-  inTime          String?     // Roycut1 entry time
-  outTime         String?     // Roycut3 exit time
+  inTime          String?
+  outTime         String?
   roymixCycleTime Int?        // RoyMix cycle time in seconds (varies per slab)
+  roymixBodyWeight Float?     // RoyMix body weight in kg (recorded per slab)
   thickness       Float?
   status          String      @default("COMPLETED")
   remarks         String?

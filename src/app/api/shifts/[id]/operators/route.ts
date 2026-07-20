@@ -1,25 +1,5 @@
-import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
-export async function GET(_: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
-  const data = await prisma.shiftOperatorAssignment.findMany({
-    where: { shiftId: id },
-    include: { machine: true, operator: true },
-  });
-  return NextResponse.json(data);
-}
-export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
-  const { machineId, operatorId } = await req.json();
-  const data = await prisma.shiftOperatorAssignment.create({
-    data: { shiftId: id, machineId, operatorId },
-    include: { machine: true, operator: true },
-  });
-  return NextResponse.json(data, { status: 201 });
-}
-export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const { id: _shiftId } = await params;
-  const { assignmentId } = await req.json();
-  await prisma.shiftOperatorAssignment.delete({ where: { id: assignmentId } });
-  return NextResponse.json({ ok: true });
-}
+import { NextResponse } from "next/server";
+// ShiftOperatorAssignment model removed — operators are free-text on Shift
+export async function GET() { return NextResponse.json([]); }
+export async function POST() { return NextResponse.json({ error: "Not supported" }, { status: 410 }); }
+export async function DELETE() { return NextResponse.json({ error: "Not supported" }, { status: 410 }); }

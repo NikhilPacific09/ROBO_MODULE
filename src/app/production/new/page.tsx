@@ -2,10 +2,23 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
+const MACHINE_ORDER = ["Roycut-1", "Roymix", "Roycut-2", "Roycut-3"];
+
+interface BatchEntry {
+  machine: { name: string };
+  targetCycleTime: number | null;
+}
+interface BatchRecipe {
+  id: string;
+  designName: string;
+  programName: string;
+  targetSlabs: number | null;
+  entries: BatchEntry[];
+}
 interface ActiveShift {
   id: string; shiftNumber: number; date: string; operatorName: string;
   roycut1CycleTime: number | null; roycut2CycleTime: number | null; roycut3CycleTime: number | null;
-  batchRecipes: { id: string; batchNumber: string; design: { name: string }; program: { name: string } }[];
+  batchRecipes: BatchRecipe[];
 }
 
 export default function NewSlabPage() {
@@ -13,7 +26,7 @@ export default function NewSlabPage() {
   const [shift, setShift] = useState<ActiveShift | null>(null);
   const [form, setForm] = useState({
     slabNumber: "", batchRecipeId: "", inTime: "", outTime: "",
-    roymixCycleTime: "", thickness: "", remarks: "",
+    roymixCycleTime: "", roymixBodyWeight: "", thickness: "", remarks: "",
   });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -29,6 +42,17 @@ export default function NewSlabPage() {
 
   const selectedBatch = shift?.batchRecipes.find(b => b.id === form.batchRecipeId);
 
+  // Determine active machines from selected batch
+  const activeMachineNames = selectedBatch
+    ? selectedBatch.entries.map(e => e.machine.name).sort(
+        (a, b) => MACHINE_ORDER.indexOf(a) - MACHINE_ORDER.indexOf(b)
+      )
+    : MACHINE_ORDER; // default: all machines
+
+  const firstMachine = activeMachineNames[0] || "Roycut-1";
+  const lastMachine = activeMachineNames[activeMachineNames.length - 1] || "Roycut-3";
+  const hasRoymix = activeMachineNames.includes("Roymix");
+
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!shift) { setError("No active shift."); return; }
@@ -37,15 +61,16 @@ export default function NewSlabPage() {
     const res = await fetch("/api/production", {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        slabNumber:      form.slabNumber,
-        shiftId:         shift.id,
-        batchRecipeId:   form.batchRecipeId || null,
-        inTime:          form.inTime || null,
-        outTime:         form.outTime || null,
-        roymixCycleTime: form.roymixCycleTime ? Number(form.roymixCycleTime) : null,
-        thickness:       form.thickness ? Number(form.thickness) : null,
-        remarks:         form.remarks || null,
-        status:          "COMPLETED",
+        slabNumber:       form.slabNumber,
+        shiftId:          shift.id,
+        batchRecipeId:    form.batchRecipeId || null,
+        inTime:           form.inTime || null,
+        outTime:          form.outTime || null,
+        roymixCycleTime:  form.roymixCycleTime ? Number(form.roymixCycleTime) : null,
+        roymixBodyWeight: form.roymixBodyWeight ? Number(form.roymixBodyWeight) : null,
+        thickness:        form.thickness ? Number(form.thickness) : null,
+        remarks:          form.remarks || null,
+        status:           "COMPLETED",
       }),
     });
     if (!res.ok) { setError("Failed to save record."); setSubmitting(false); return; }
@@ -69,7 +94,7 @@ export default function NewSlabPage() {
       {error && <div className="mb-4 bg-red-50 border border-red-300 text-red-700 text-sm px-4 py-3 rounded-xl">{error}</div>}
 
       <form onSubmit={submit} className="space-y-5">
-        {/* Core slab fields */}
+        {/* Slab Details */}
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
           <h2 className="font-semibold text-gray-800 mb-4">Slab Details</h2>
           <div className="grid grid-cols-2 gap-4">
@@ -79,18 +104,26 @@ export default function NewSlabPage() {
                 placeholder="e.g. 140748" className={inp} required autoFocus />
             </div>
             <div className="col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Batch / Design</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Production Setup</label>
               <select value={form.batchRecipeId} onChange={e => set("batchRecipeId", e.target.value)} className={inp}>
-                <option value="">— Select Batch (optional) —</option>
+                <option value="">— Select (optional) —</option>
                 {shift.batchRecipes.map(b => (
-                  <option key={b.id} value={b.id}>{b.batchNumber} — {b.design.name} ({b.program.name})</option>
+                  <option key={b.id} value={b.id}>
+                    {b.designName} — {b.programName}{b.targetSlabs ? ` (Target: ${b.targetSlabs})` : ""}
+                  </option>
                 ))}
               </select>
               {selectedBatch && (
-                <p className="text-xs text-blue-600 mt-1">Program: {selectedBatch.program.name}</p>
+                <div className="mt-1 flex gap-2 text-xs">
+                  <span className="text-blue-600">Program: {selectedBatch.programName}</span>
+                  <span className="text-gray-400">·</span>
+                  <span className="text-gray-500">
+                    Machines: {activeMachineNames.join(" → ")}
+                  </span>
+                </div>
               )}
               {shift.batchRecipes.length === 0 && (
-                <p className="text-xs text-orange-500 mt-1">No batches yet. <a href="/batch/new" className="underline">Create one</a></p>
+                <p className="text-xs text-orange-500 mt-1">No production setups yet. <a href="/batch/new" className="underline">Create one</a></p>
               )}
             </div>
             <div>
@@ -101,42 +134,57 @@ export default function NewSlabPage() {
           </div>
         </div>
 
-        {/* Timing */}
+        {/* Machine Timing */}
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
           <h2 className="font-semibold text-gray-800 mb-1">Machine Timing</h2>
-          <p className="text-xs text-gray-500 mb-4">In Time = slab enters Roycut-1 · Out Time = slab exits Roycut-3</p>
+          <p className="text-xs text-gray-500 mb-4">
+            In Time = slab enters {firstMachine} · Out Time = slab exits {lastMachine}
+          </p>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">In Time (Roycut-1 entry)</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">In Time ({firstMachine} entry)</label>
               <input type="time" value={form.inTime} onChange={e => set("inTime", e.target.value)} className={inp} />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Out Time (Roycut-3 exit)</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Out Time ({lastMachine} exit)</label>
               <input type="time" value={form.outTime} onChange={e => set("outTime", e.target.value)} className={inp} />
             </div>
           </div>
 
-          {/* Roycut cycle times — read-only from shift */}
-          <div className="mt-4 grid grid-cols-3 gap-3">
-            {[
-              { label: "Roycut-1 CT", val: shift.roycut1CycleTime },
-              { label: "Roycut-2 CT", val: shift.roycut2CycleTime },
-              { label: "Roycut-3 CT", val: shift.roycut3CycleTime },
-            ].map(({ label, val }) => (
-              <div key={label} className="bg-gray-50 rounded-lg p-2 text-center">
-                <p className="text-xs text-gray-500">{label}</p>
-                <p className="text-sm font-semibold text-gray-700 mt-0.5">{val ? `${val}s` : "—"}</p>
-                <p className="text-xs text-gray-400">Fixed (shift)</p>
-              </div>
-            ))}
-          </div>
+          {/* Target cycle times from batch — read-only */}
+          {selectedBatch && selectedBatch.entries.filter(e => e.machine.name !== "Roymix" && e.targetCycleTime).length > 0 && (
+            <div className="mt-4 grid grid-cols-3 gap-3">
+              {selectedBatch.entries
+                .filter(e => e.machine.name !== "Roymix")
+                .sort((a, b) => MACHINE_ORDER.indexOf(a.machine.name) - MACHINE_ORDER.indexOf(b.machine.name))
+                .map(e => (
+                  <div key={e.machine.name} className="bg-gray-50 rounded-lg p-2 text-center">
+                    <p className="text-xs text-gray-500">{e.machine.name} CT</p>
+                    <p className="text-sm font-semibold text-gray-700 mt-0.5">
+                      {e.targetCycleTime ? `${e.targetCycleTime}s` : "—"}
+                    </p>
+                    <p className="text-xs text-gray-400">Target</p>
+                  </div>
+                ))}
+            </div>
+          )}
 
-          {/* RoyMix — per slab */}
-          <div className="mt-4">
-            <label className="block text-sm font-medium text-gray-700 mb-1">RoyMix Cycle Time (sec) — varies per slab</label>
-            <input type="number" value={form.roymixCycleTime} onChange={e => set("roymixCycleTime", e.target.value)}
-              placeholder="e.g. 185" className={inp} />
-          </div>
+          {/* RoyMix — per slab (only if Roymix is active) */}
+          {hasRoymix && (
+            <div className="mt-4 grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">RoyMix Cycle Time (sec)</label>
+                <input type="number" value={form.roymixCycleTime} onChange={e => set("roymixCycleTime", e.target.value)}
+                  placeholder="e.g. 185" className={inp} />
+                <p className="text-xs text-gray-400 mt-0.5">Varies per slab</p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">RoyMix Body Weight (kg)</label>
+                <input type="number" step="0.1" value={form.roymixBodyWeight} onChange={e => set("roymixBodyWeight", e.target.value)}
+                  placeholder="e.g. 42.5" className={inp} />
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Remarks */}

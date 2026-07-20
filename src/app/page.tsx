@@ -11,7 +11,7 @@ export default async function DashboardPage() {
 
   const todayRecords = await prisma.productionRecord.findMany({
     where: { shift: { date: today } },
-    include: { shift: true, batchRecipe: { include: { design: true, program: true } } },
+    include: { shift: true, batchRecipe: true },
     orderBy: { createdAt: "desc" },
     take: 10,
   });

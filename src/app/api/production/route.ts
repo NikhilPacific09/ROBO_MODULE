@@ -7,7 +7,7 @@ export async function GET(req: NextRequest) {
   if (shiftId) where.shiftId = shiftId;
   const data = await prisma.productionRecord.findMany({
     where,
-    include: { batchRecipe: { include: { design: true, program: true } }, shift: true },
+    include: { batchRecipe: true, shift: true },
     orderBy: { createdAt: "desc" },
     take: 200,
   });
@@ -23,12 +23,13 @@ export async function POST(req: Request) {
       batchRecipeId:   body.batchRecipeId || null,
       inTime:          body.inTime || null,
       outTime:         body.outTime || null,
-      roymixCycleTime: body.roymixCycleTime ? Number(body.roymixCycleTime) : null,
-      thickness:       body.thickness ? Number(body.thickness) : null,
+      roymixCycleTime:  body.roymixCycleTime ? Number(body.roymixCycleTime) : null,
+      roymixBodyWeight: body.roymixBodyWeight ? Number(body.roymixBodyWeight) : null,
+      thickness:        body.thickness ? Number(body.thickness) : null,
       status:          body.status || "COMPLETED",
       remarks:         body.remarks || null,
     },
-    include: { batchRecipe: { include: { design: true, program: true } }, shift: true },
+    include: { batchRecipe: true, shift: true },
   });
   return NextResponse.json(record, { status: 201 });
 }
