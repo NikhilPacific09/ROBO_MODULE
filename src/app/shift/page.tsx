@@ -7,7 +7,7 @@ interface Shift {
   id: string; shiftNumber: number; date: string; operatorName: string;
   startTime: string; endTime: string | null; status: string; notes: string | null;
   roycut1CycleTime: number | null; roycut2CycleTime: number | null; roycut3CycleTime: number | null;
-  batchRecipes: { id: string; designName: string; programName: string; targetSlabs: number | null; _count?: { productionRecords: number } }[];
+  batchRecipes: { id: string; designName: string; targetSlabs: number | null; entries: { machine: { name: string }; programName: string | null }[]; _count?: { productionRecords: number } }[];
   productionRecords: { id: string; slabNumber: string; inTime: string | null; outTime: string | null; roymixCycleTime: number | null; thickness: number | null; status: string; createdAt: string }[];
   delayLogs: { id: string; durationMinutes: number; startTime: string | null; remarks: string | null; delayCode: { code: string; description: string; category: string } }[];
 }
@@ -175,12 +175,15 @@ export default function ShiftPage() {
           ) : (
             <div className="space-y-2">
               {shift.batchRecipes.map(b => (
-                <div key={b.id} className="flex justify-between items-center py-2 border-b border-gray-50 last:border-0">
-                  <div>
+                <div key={b.id} className="py-2 border-b border-gray-50 last:border-0">
+                  <div className="flex justify-between items-center">
                     <p className="text-sm font-medium text-gray-800">{b.designName}</p>
-                    <p className="text-xs text-gray-400">{b.programName}{b.targetSlabs ? ` · Target: ${b.targetSlabs} slabs` : ""}</p>
+                    {b._count && <span className="text-xs text-gray-400">{b._count.productionRecords} slabs</span>}
                   </div>
-                  {b._count && <span className="text-xs text-gray-400">{b._count.productionRecords} slabs</span>}
+                  <p className="text-xs text-gray-400 mt-0.5">
+                    {b.entries.map(e => `${e.machine.name}: ${e.programName || "—"}`).join(" · ")}
+                    {b.targetSlabs ? ` · Target: ${b.targetSlabs}` : ""}
+                  </p>
                 </div>
               ))}
             </div>

@@ -122,6 +122,7 @@ export default async function ProductionViewPage({ params }: { params: Promise<{
               <div key={e.id} className="border border-gray-100 rounded-lg p-3">
                 <p className="font-medium text-gray-700 mb-2">{e.machine.name}</p>
                 <div className="flex flex-wrap gap-1 text-xs">
+                  {e.programName && <span className="bg-purple-50 text-purple-600 px-2 py-0.5 rounded">📋 {e.programName}</span>}
                   {e.toolName && <span className="bg-gray-50 text-gray-500 px-2 py-0.5 rounded">🔧 {e.toolName}</span>}
                   {e.liquidName && <span className="bg-blue-50 text-blue-600 px-2 py-0.5 rounded">💧 {e.liquidName}</span>}
                   {e.powderName && <span className="bg-orange-50 text-orange-600 px-2 py-0.5 rounded">🪨 {e.powderName}</span>}

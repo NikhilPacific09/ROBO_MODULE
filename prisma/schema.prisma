@@ -112,6 +112,7 @@ model BatchRecipeEntry {
   batchRecipe     BatchRecipe @relation(fields: [batchRecipeId], references: [id])
   machineId       String
   machine         Machine     @relation(fields: [machineId], references: [id])
+  programName     String?     // Program name for this specific machine
   toolName        String?
   liquidName      String?
   powderName      String?

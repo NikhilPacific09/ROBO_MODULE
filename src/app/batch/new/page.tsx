@@ -18,13 +18,12 @@ export default function NewBatchPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
-  // Which machines are active for this production run
   const [activeMachines, setActiveMachines] = useState<Record<string, boolean>>({});
 
   const [form, setForm] = useState({
-    shiftId: "", designName: "", programName: "", targetSlabs: "", notes: "",
+    shiftId: "", designName: "", targetSlabs: "", notes: "",
     entries: {} as Record<string, {
-      toolName: string; liquidName: string; powderName: string;
+      programName: string; toolName: string; liquidName: string; powderName: string;
       rollerHeight: string; targetCycleTime: string;
     }>,
   });
@@ -41,17 +40,16 @@ export default function NewBatchPage() {
     });
   }, []);
 
-  // Initialize entries and active machines when machines load
   useEffect(() => {
     if (machines.length === 0) return;
     const entries: typeof form.entries = {};
     const active: Record<string, boolean> = {};
     for (const m of machines) {
       entries[m.id] = {
-        toolName: "", liquidName: "", powderName: "",
+        programName: "", toolName: "", liquidName: "", powderName: "",
         rollerHeight: "", targetCycleTime: "",
       };
-      active[m.id] = true; // all active by default
+      active[m.id] = true;
     }
     setForm(p => ({ ...p, entries }));
     setActiveMachines(active);
@@ -74,19 +72,21 @@ export default function NewBatchPage() {
     e.preventDefault();
     if (!form.shiftId) { setError("No active shift."); return; }
     if (!form.designName.trim()) { setError("Design name is required."); return; }
-    if (!form.programName.trim()) { setError("Program name is required."); return; }
 
     const anyActive = machines.some(m => activeMachines[m.id]);
     if (!anyActive) { setError("At least one machine must be active."); return; }
 
     setSubmitting(true); setError("");
 
-    // Only include entries for active machines
     const entries = machines
       .filter(m => activeMachines[m.id])
       .map(m => ({
         machineId: m.id,
-        ...form.entries[m.id],
+        programName: form.entries[m.id]?.programName || "",
+        toolName: form.entries[m.id]?.toolName || "",
+        liquidName: form.entries[m.id]?.liquidName || "",
+        powderName: form.entries[m.id]?.powderName || "",
+        rollerHeight: form.entries[m.id]?.rollerHeight || "",
         targetCycleTime: form.entries[m.id]?.targetCycleTime
           ? Number(form.entries[m.id].targetCycleTime) : null,
       }));
@@ -97,13 +97,17 @@ export default function NewBatchPage() {
       body: JSON.stringify({
         shiftId: form.shiftId,
         designName: form.designName.trim(),
-        programName: form.programName.trim(),
         targetSlabs: form.targetSlabs ? Number(form.targetSlabs) : null,
         notes: form.notes || null,
         entries,
       }),
     });
-    if (!res.ok) { setError("Failed to save."); setSubmitting(false); return; }
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setError(data.error || "Failed to save.");
+      setSubmitting(false);
+      return;
+    }
     router.push("/shift");
   };
 
@@ -116,7 +120,7 @@ export default function NewBatchPage() {
         <h1 className="text-2xl font-bold text-gray-900">Production Setup</h1>
         {activeShift
           ? <p className="text-sm text-green-600 mt-1">Shift {activeShift.shiftNumber} — {activeShift.date}</p>
-          : <p className="text-sm text-red-500 mt-1">⚠ No active shift. <a href="/shift/start" className="underline">Start one first.</a></p>}
+          : <p className="text-sm text-red-500 mt-1">No active shift. <a href="/shift/start" className="underline">Start one first.</a></p>}
       </div>
       {error && <div className="mb-4 bg-red-50 border border-red-300 text-red-700 text-sm px-4 py-3 rounded-xl">{error}</div>}
 
@@ -138,18 +142,6 @@ export default function NewBatchPage() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Program Name <span className="text-red-500">*</span>
-              </label>
-              <input
-                value={form.programName}
-                onChange={e => setForm(p => ({ ...p, programName: e.target.value }))}
-                placeholder="Type program name..."
-                className={inp}
-                required
-              />
-            </div>
-            <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Target Slabs</label>
               <input
                 type="number"
@@ -159,7 +151,7 @@ export default function NewBatchPage() {
                 className={inp}
               />
             </div>
-            <div>
+            <div className="col-span-2">
               <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
               <input
                 value={form.notes}
@@ -178,13 +170,13 @@ export default function NewBatchPage() {
             <span className="text-xs text-gray-400">{activeCount} of {machines.length} active</span>
           </div>
           <p className="text-xs text-gray-400 mb-4">
-            Check which machines are active for this production run. Uncheck machines not in use.
+            Check which machines are active for this production run. Each machine has its own program name.
           </p>
 
           <div className="space-y-4">
             {machines.map(m => {
               const entry = form.entries[m.id] || {
-                toolName: "", liquidName: "", powderName: "",
+                programName: "", toolName: "", liquidName: "", powderName: "",
                 rollerHeight: "", targetCycleTime: "",
               };
               const isRoymix = m.name === "Roymix";
@@ -215,6 +207,13 @@ export default function NewBatchPage() {
 
                   {isActive && (
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                      {/* Program Name — every active machine gets one */}
+                      <div className={isRoymix ? "col-span-2 md:col-span-3" : ""}>
+                        <label className="block text-xs text-gray-500 mb-1">Program Name</label>
+                        <input value={entry.programName}
+                          onChange={e => setEntry(m.id, "programName", e.target.value)}
+                          placeholder={`${m.name} program...`} className={inp} />
+                      </div>
                       {!isRoymix && (
                         <div>
                           <label className="block text-xs text-gray-500 mb-1">Tool</label>

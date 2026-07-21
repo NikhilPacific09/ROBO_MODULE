@@ -158,19 +158,13 @@ export default function DelaysPage() {
             {submitting ? "Logging..." : "Log Delay"}
           </button>
 
-          {/* Quick reference */}
-          <details className="mt-2">
-            <summary className="text-xs text-gray-400 cursor-pointer hover:text-gray-600">View delay code reference</summary>
-            <div className="mt-2 grid grid-cols-2 gap-1 max-h-48 overflow-y-auto">
-              {delayCodes.map(d => (
-                <div key={d.id} className="flex items-center gap-2 text-xs cursor-pointer hover:bg-gray-50 rounded px-2 py-1"
-                  onClick={() => setForm(p => ({ ...p, codeInput: d.code }))}>
-                  <span className="font-bold text-gray-700 w-8 shrink-0">{d.code}</span>
-                  <span className="text-gray-500 truncate">{d.description}</span>
-                </div>
-              ))}
-            </div>
-          </details>
+          {/* Link to full delay codes list */}
+          <div className="mt-3 text-center">
+            <a href="/masters/delay-codes" target="_blank"
+              className="text-sm text-blue-600 hover:text-blue-800 font-medium hover:underline">
+              View All Delay Codes →
+            </a>
+          </div>
         </form>
       )}
 

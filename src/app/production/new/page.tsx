@@ -6,18 +6,16 @@ const MACHINE_ORDER = ["Roycut-1", "Roymix", "Roycut-2", "Roycut-3"];
 
 interface BatchEntry {
   machine: { name: string };
+  programName: string | null;
   targetCycleTime: number | null;
 }
 interface BatchRecipe {
   id: string;
   designName: string;
-  programName: string;
-  targetSlabs: number | null;
   entries: BatchEntry[];
 }
 interface ActiveShift {
   id: string; shiftNumber: number; date: string; operatorName: string;
-  roycut1CycleTime: number | null; roycut2CycleTime: number | null; roycut3CycleTime: number | null;
   batchRecipes: BatchRecipe[];
 }
 
@@ -25,7 +23,7 @@ export default function NewSlabPage() {
   const router = useRouter();
   const [shift, setShift] = useState<ActiveShift | null>(null);
   const [form, setForm] = useState({
-    slabNumber: "", batchRecipeId: "", inTime: "", outTime: "",
+    slabNumber: "", inTime: "", outTime: "",
     roymixCycleTime: "", roymixBodyWeight: "", thickness: "", remarks: "",
   });
   const [submitting, setSubmitting] = useState(false);
@@ -40,17 +38,20 @@ export default function NewSlabPage() {
   const set = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }));
   const inp = "w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400";
 
-  const selectedBatch = shift?.batchRecipes.find(b => b.id === form.batchRecipeId);
+  // Get latest batch to determine active machines
+  const latestBatch = shift?.batchRecipes?.[shift.batchRecipes.length - 1] ?? null;
 
-  // Determine active machines from selected batch
-  const activeMachineNames = selectedBatch
-    ? selectedBatch.entries.map(e => e.machine.name).sort(
+  // Determine active machines from latest batch
+  const activeMachineNames = latestBatch
+    ? latestBatch.entries.map(e => e.machine.name).sort(
         (a, b) => MACHINE_ORDER.indexOf(a) - MACHINE_ORDER.indexOf(b)
       )
-    : MACHINE_ORDER; // default: all machines
+    : [];
 
-  const firstMachine = activeMachineNames[0] || "Roycut-1";
-  const lastMachine = activeMachineNames[activeMachineNames.length - 1] || "Roycut-3";
+  // Filter to only Roycut machines (for In/Out time)
+  const activeRoycuts = activeMachineNames.filter(n => n !== "Roymix");
+  const firstMachine = activeRoycuts[0] || activeMachineNames[0] || "—";
+  const lastMachine = activeRoycuts[activeRoycuts.length - 1] || activeMachineNames[activeMachineNames.length - 1] || "—";
   const hasRoymix = activeMachineNames.includes("Roymix");
 
   const submit = async (e: React.FormEvent) => {
@@ -63,7 +64,7 @@ export default function NewSlabPage() {
       body: JSON.stringify({
         slabNumber:       form.slabNumber,
         shiftId:          shift.id,
-        batchRecipeId:    form.batchRecipeId || null,
+        batchRecipeId:    latestBatch?.id || null,
         inTime:           form.inTime || null,
         outTime:          form.outTime || null,
         roymixCycleTime:  form.roymixCycleTime ? Number(form.roymixCycleTime) : null,
@@ -90,6 +91,11 @@ export default function NewSlabPage() {
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900">New Slab Entry</h1>
         <p className="text-sm text-green-600 mt-1">Shift {shift.shiftNumber} · {shift.date} · {shift.operatorName}</p>
+        {latestBatch && (
+          <p className="text-xs text-gray-400 mt-0.5">
+            Design: {latestBatch.designName} · Machines: {activeMachineNames.join(" → ")}
+          </p>
+        )}
       </div>
       {error && <div className="mb-4 bg-red-50 border border-red-300 text-red-700 text-sm px-4 py-3 rounded-xl">{error}</div>}
 
@@ -98,33 +104,10 @@ export default function NewSlabPage() {
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
           <h2 className="font-semibold text-gray-800 mb-4">Slab Details</h2>
           <div className="grid grid-cols-2 gap-4">
-            <div className="col-span-2">
+            <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Slab Number <span className="text-red-500">*</span></label>
               <input value={form.slabNumber} onChange={e => set("slabNumber", e.target.value)}
                 placeholder="e.g. 140748" className={inp} required autoFocus />
-            </div>
-            <div className="col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Production Setup</label>
-              <select value={form.batchRecipeId} onChange={e => set("batchRecipeId", e.target.value)} className={inp}>
-                <option value="">— Select (optional) —</option>
-                {shift.batchRecipes.map(b => (
-                  <option key={b.id} value={b.id}>
-                    {b.designName} — {b.programName}{b.targetSlabs ? ` (Target: ${b.targetSlabs})` : ""}
-                  </option>
-                ))}
-              </select>
-              {selectedBatch && (
-                <div className="mt-1 flex gap-2 text-xs">
-                  <span className="text-blue-600">Program: {selectedBatch.programName}</span>
-                  <span className="text-gray-400">·</span>
-                  <span className="text-gray-500">
-                    Machines: {activeMachineNames.join(" → ")}
-                  </span>
-                </div>
-              )}
-              {shift.batchRecipes.length === 0 && (
-                <p className="text-xs text-orange-500 mt-1">No production setups yet. <a href="/batch/new" className="underline">Create one</a></p>
-              )}
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Thickness (mm)</label>
@@ -137,24 +120,34 @@ export default function NewSlabPage() {
         {/* Machine Timing */}
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
           <h2 className="font-semibold text-gray-800 mb-1">Machine Timing</h2>
-          <p className="text-xs text-gray-500 mb-4">
-            In Time = slab enters {firstMachine} · Out Time = slab exits {lastMachine}
-          </p>
+          {activeMachineNames.length > 0 ? (
+            <p className="text-xs text-gray-500 mb-4">
+              Active: {activeMachineNames.join(" → ")} · In = {firstMachine} entry · Out = {lastMachine} exit
+            </p>
+          ) : (
+            <p className="text-xs text-orange-500 mb-4">
+              No batch setup found. <a href="/batch/new" className="underline">Create one</a> to auto-detect active machines.
+            </p>
+          )}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">In Time ({firstMachine} entry)</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                In Time{firstMachine !== "—" ? ` (${firstMachine})` : ""}
+              </label>
               <input type="time" value={form.inTime} onChange={e => set("inTime", e.target.value)} className={inp} />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Out Time ({lastMachine} exit)</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Out Time{lastMachine !== "—" ? ` (${lastMachine})` : ""}
+              </label>
               <input type="time" value={form.outTime} onChange={e => set("outTime", e.target.value)} className={inp} />
             </div>
           </div>
 
           {/* Target cycle times from batch — read-only */}
-          {selectedBatch && selectedBatch.entries.filter(e => e.machine.name !== "Roymix" && e.targetCycleTime).length > 0 && (
+          {latestBatch && latestBatch.entries.filter(e => e.machine.name !== "Roymix" && e.targetCycleTime).length > 0 && (
             <div className="mt-4 grid grid-cols-3 gap-3">
-              {selectedBatch.entries
+              {latestBatch.entries
                 .filter(e => e.machine.name !== "Roymix")
                 .sort((a, b) => MACHINE_ORDER.indexOf(a.machine.name) - MACHINE_ORDER.indexOf(b.machine.name))
                 .map(e => (
@@ -168,24 +161,30 @@ export default function NewSlabPage() {
                 ))}
             </div>
           )}
+        </div>
 
-          {/* RoyMix — per slab (only if Roymix is active) */}
-          {hasRoymix && (
-            <div className="mt-4 grid grid-cols-2 gap-4">
+        {/* RoyMix — separate section */}
+        {hasRoymix && (
+          <div className="bg-white rounded-xl border border-emerald-200 shadow-sm p-5">
+            <div className="flex items-center gap-2 mb-4">
+              <span className="w-2 h-5 rounded-full bg-emerald-500" />
+              <h2 className="font-semibold text-gray-800">RoyMix</h2>
+              <span className="text-xs text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">Values vary per slab</span>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">RoyMix Cycle Time (sec)</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Cycle Time (sec)</label>
                 <input type="number" value={form.roymixCycleTime} onChange={e => set("roymixCycleTime", e.target.value)}
                   placeholder="e.g. 185" className={inp} />
-                <p className="text-xs text-gray-400 mt-0.5">Varies per slab</p>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">RoyMix Body Weight (kg)</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Body Weight (kg)</label>
                 <input type="number" step="0.1" value={form.roymixBodyWeight} onChange={e => set("roymixBodyWeight", e.target.value)}
                   placeholder="e.g. 42.5" className={inp} />
               </div>
             </div>
-          )}
-        </div>
+          </div>
+        )}
 
         {/* Remarks */}
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
