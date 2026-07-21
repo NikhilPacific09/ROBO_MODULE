@@ -3,7 +3,6 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
 interface Machine { id: string; name: string; type: string; }
-interface Design { id: string; name: string; programs: { id: string; name: string }[]; }
 interface ActiveShift { id: string; shiftNumber: number; date: string; }
 
 const MACHINE_ORDER = ["Roycut-1", "Roymix", "Roycut-2", "Roycut-3"];
@@ -14,11 +13,7 @@ const MACHINE_COLORS: Record<string, string> = {
 
 export default function NewBatchPage() {
   const router = useRouter();
-  const [designs, setDesigns] = useState<Design[]>([]);
   const [machines, setMachines] = useState<Machine[]>([]);
-  const [tools, setTools] = useState<{ id: string; name: string }[]>([]);
-  const [liquids, setLiquids] = useState<{ id: string; name: string }[]>([]);
-  const [powders, setPowders] = useState<{ id: string; name: string }[]>([]);
   const [activeShift, setActiveShift] = useState<ActiveShift | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -35,16 +30,12 @@ export default function NewBatchPage() {
   });
 
   useEffect(() => {
-    fetch("/api/designs").then(r => r.json()).then(setDesigns);
     fetch("/api/machines").then(r => r.json()).then((ms: Machine[]) => {
       const sorted = [...ms].sort((a, b) =>
         MACHINE_ORDER.indexOf(a.name) - MACHINE_ORDER.indexOf(b.name)
       );
       setMachines(sorted);
     });
-    fetch("/api/tools").then(r => r.json()).then(setTools);
-    fetch("/api/liquids").then(r => r.json()).then(setLiquids);
-    fetch("/api/powders").then(r => r.json()).then(setPowders);
     fetch("/api/shifts/active").then(r => r.ok ? r.json() : null).then(s => {
       if (s) { setActiveShift(s); setForm(p => ({ ...p, shiftId: s.id })); }
     });
@@ -78,11 +69,6 @@ export default function NewBatchPage() {
         [machineId]: { ...p.entries[machineId], [field]: value },
       },
     }));
-
-  // All design names for autocomplete
-  const designNames = designs.map(d => d.name);
-  // All program names for autocomplete
-  const allProgramNames = designs.flatMap(d => d.programs.map(p => p.name));
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -144,32 +130,24 @@ export default function NewBatchPage() {
                 Design Name <span className="text-red-500">*</span>
               </label>
               <input
-                list="design-list"
                 value={form.designName}
                 onChange={e => setForm(p => ({ ...p, designName: e.target.value }))}
-                placeholder="Type or select design..."
+                placeholder="Type design name..."
                 className={inp}
                 required
               />
-              <datalist id="design-list">
-                {designNames.map(n => <option key={n} value={n} />)}
-              </datalist>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Program Name <span className="text-red-500">*</span>
               </label>
               <input
-                list="program-list"
                 value={form.programName}
                 onChange={e => setForm(p => ({ ...p, programName: e.target.value }))}
-                placeholder="Type or select program..."
+                placeholder="Type program name..."
                 className={inp}
                 required
               />
-              <datalist id="program-list">
-                {allProgramNames.map(n => <option key={n} value={n} />)}
-              </datalist>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Target Slabs</label>
@@ -240,27 +218,24 @@ export default function NewBatchPage() {
                       {!isRoymix && (
                         <div>
                           <label className="block text-xs text-gray-500 mb-1">Tool</label>
-                          <select value={entry.toolName} onChange={e => setEntry(m.id, "toolName", e.target.value)} className={inp}>
-                            <option value="">— None —</option>
-                            {tools.map(t => <option key={t.id} value={t.name}>{t.name}</option>)}
-                          </select>
+                          <input value={entry.toolName}
+                            onChange={e => setEntry(m.id, "toolName", e.target.value)}
+                            placeholder="Type tool name..." className={inp} />
                         </div>
                       )}
                       <div>
                         <label className="block text-xs text-gray-500 mb-1">Liquid</label>
-                        <select value={entry.liquidName} onChange={e => setEntry(m.id, "liquidName", e.target.value)} className={inp}>
-                          <option value="">— None —</option>
-                          {liquids.map(l => <option key={l.id} value={l.name}>{l.name}</option>)}
-                        </select>
+                        <input value={entry.liquidName}
+                          onChange={e => setEntry(m.id, "liquidName", e.target.value)}
+                          placeholder="Type liquid name..." className={inp} />
                       </div>
                       {!isRoymix && (
                         <>
                           <div>
                             <label className="block text-xs text-gray-500 mb-1">Powder</label>
-                            <select value={entry.powderName} onChange={e => setEntry(m.id, "powderName", e.target.value)} className={inp}>
-                              <option value="">— None —</option>
-                              {powders.map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
-                            </select>
+                            <input value={entry.powderName}
+                              onChange={e => setEntry(m.id, "powderName", e.target.value)}
+                              placeholder="Type powder name..." className={inp} />
                           </div>
                           <div>
                             <label className="block text-xs text-gray-500 mb-1">Roller Height (mm)</label>

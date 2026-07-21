@@ -9,7 +9,7 @@ interface Props {
   totalDelayMins: number;
   delayEvents: number;
   slabsPerHour: number | null;
-  recentProduction: { id: string; slabNumber: string; inTime: string | null; outTime: string | null; status: string; batchRecipe: { design: { name: string } } | null }[];
+  recentProduction: { id: string; slabNumber: string; inTime: string | null; outTime: string | null; status: string; batchRecipe: { designName: string; programName: string } | null }[];
   recentShifts: { id: string; shiftNumber: number; date: string; operatorName: string; status: string; productionRecords: unknown[]; delayLogs: { durationMinutes: number }[] }[];
   delayChartData: { cat: string; mins: number }[];
 }
@@ -23,15 +23,22 @@ function fmtDelay(mins: number) {
 const BAR_COLORS = ["#3B82F6","#EF4444","#F59E0B","#10B981","#8B5CF6","#F97316","#06B6D4","#EC4899","#84CC16"];
 
 export default function DashboardClient({ activeShift, totalSlabs, totalDelayMins, delayEvents, slabsPerHour, recentProduction, recentShifts, delayChartData }: Props) {
-  const [time, setTime] = useState("");
+  const [hh, setHH] = useState("00");
+  const [mm, setMM] = useState("00");
+  const [ss, setSS] = useState("00");
+  const [ampm, setAmpm] = useState("AM");
+  const [dateStr, setDateStr] = useState("");
 
   useEffect(() => {
     const tick = () => {
       const now = new Date();
-      const hh = String(now.getHours()).padStart(2, "0");
-      const mm = String(now.getMinutes()).padStart(2, "0");
-      const ss = String(now.getSeconds()).padStart(2, "0");
-      setTime(`${hh}:${mm}:${ss}`);
+      const h24 = now.getHours();
+      const h12 = h24 % 12 || 12;
+      setHH(String(h12).padStart(2, "0"));
+      setMM(String(now.getMinutes()).padStart(2, "0"));
+      setSS(String(now.getSeconds()).padStart(2, "0"));
+      setAmpm(h24 >= 12 ? "PM" : "AM");
+      setDateStr(now.toLocaleDateString("en-GB", { weekday: "short", day: "2-digit", month: "short", year: "numeric" }));
     };
     tick();
     const id = setInterval(tick, 1000);
@@ -50,9 +57,21 @@ export default function DashboardClient({ activeShift, totalSlabs, totalDelayMin
         </div>
 
         {/* Digital Clock */}
-        <div className="bg-gray-900 text-green-400 rounded-xl px-6 py-3 text-center font-mono shadow-lg">
-          <p className="text-3xl font-bold tracking-widest">{time || "00:00:00"}</p>
-          <p className="text-xs text-gray-400 mt-1 tracking-widest uppercase">Live Time</p>
+        <div className="bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 rounded-2xl px-5 py-3 text-center font-mono shadow-xl border border-gray-700/50 relative overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-t from-blue-500/5 to-transparent pointer-events-none" />
+          <div className="relative">
+            <div className="flex items-baseline justify-center gap-0.5">
+              <div className="flex items-baseline">
+                <span className="text-3xl font-bold text-cyan-400 tracking-wider" style={{ textShadow: "0 0 12px rgba(34,211,238,0.4)" }}>{hh}</span>
+                <span className="text-3xl font-bold text-cyan-300 mx-0.5 animate-pulse">:</span>
+                <span className="text-3xl font-bold text-cyan-400 tracking-wider" style={{ textShadow: "0 0 12px rgba(34,211,238,0.4)" }}>{mm}</span>
+                <span className="text-3xl font-bold text-cyan-300 mx-0.5 animate-pulse">:</span>
+                <span className="text-3xl font-bold text-cyan-400 tracking-wider" style={{ textShadow: "0 0 12px rgba(34,211,238,0.4)" }}>{ss}</span>
+              </div>
+              <span className="text-xs font-bold text-cyan-300/70 ml-1.5 self-start mt-1">{ampm}</span>
+            </div>
+            <p className="text-[10px] text-cyan-300/60 mt-1 tracking-widest uppercase">{dateStr}</p>
+          </div>
         </div>
 
         <div className="flex gap-2">

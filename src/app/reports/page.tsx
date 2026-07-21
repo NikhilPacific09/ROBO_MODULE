@@ -9,7 +9,8 @@ interface Shift {
   id: string; date: string; shiftNumber: number; operatorName: string; status: string;
   startTime: string; endTime: string | null;
   roycut1CycleTime: number | null; roycut2CycleTime: number | null; roycut3CycleTime: number | null;
-  _count: { productionRecords: number; delayLogs: number };
+  productionRecords: { id: string }[];
+  delayLogs: { id: string; durationMinutes: number }[];
 }
 
 interface DelayLog {
@@ -58,7 +59,7 @@ export default function ReportsPage() {
     });
   }, []);
 
-  const totalSlabs = shifts.reduce((s, x) => s + x._count.productionRecords, 0);
+  const totalSlabs = shifts.reduce((s, x) => s + x.productionRecords.length, 0);
   const totalDelayMins = delays.reduce((s, d) => s + d.durationMinutes, 0);
   const totalHours = shifts.reduce((s, x) => s + getElapsedHours(x.startTime, x.endTime), 0);
   const avgSlabsPerHour = totalHours > 0 ? (totalSlabs / totalHours).toFixed(1) : "—";
@@ -86,9 +87,9 @@ export default function ReportsPage() {
     const hrs = getElapsedHours(s.startTime, s.endTime);
     return {
       name: `S${s.shiftNumber}\n${s.date.slice(5)}`,
-      slabs: s._count.productionRecords,
-      slabsPerHour: hrs > 0 ? Number((s._count.productionRecords / hrs).toFixed(1)) : 0,
-      delays: s._count.delayLogs,
+      slabs: s.productionRecords.length,
+      slabsPerHour: hrs > 0 ? Number((s.productionRecords.length / hrs).toFixed(1)) : 0,
+      delays: s.delayLogs.length,
     };
   });
 
@@ -130,8 +131,8 @@ export default function ReportsPage() {
   const dailyMap: Record<string, { slabs: number; delays: number; hours: number }> = {};
   for (const s of shifts) {
     if (!dailyMap[s.date]) dailyMap[s.date] = { slabs: 0, delays: 0, hours: 0 };
-    dailyMap[s.date].slabs += s._count.productionRecords;
-    dailyMap[s.date].delays += s._count.delayLogs;
+    dailyMap[s.date].slabs += s.productionRecords.length;
+    dailyMap[s.date].delays += s.delayLogs.length;
     dailyMap[s.date].hours += getElapsedHours(s.startTime, s.endTime);
   }
   const dailyData = Object.entries(dailyMap)
@@ -220,15 +221,15 @@ export default function ReportsPage() {
                 <tbody>
                   {shifts.map(s => {
                     const hrs = getElapsedHours(s.startTime, s.endTime);
-                    const sph = hrs > 0 ? (s._count.productionRecords / hrs).toFixed(1) : "—";
+                    const sph = hrs > 0 ? (s.productionRecords.length / hrs).toFixed(1) : "—";
                     return (
                       <tr key={s.id} className="border-t border-gray-50 hover:bg-slate-50">
                         <td className="px-4 py-3 text-gray-600">{s.date}</td>
                         <td className="px-4 py-3 font-bold text-blue-700">#{s.shiftNumber}</td>
                         <td className="px-4 py-3 text-gray-700">{s.operatorName || "—"}</td>
-                        <td className="px-4 py-3 font-bold text-blue-700">{s._count.productionRecords}</td>
+                        <td className="px-4 py-3 font-bold text-blue-700">{s.productionRecords.length}</td>
                         <td className="px-4 py-3 font-medium text-green-700">{sph}</td>
-                        <td className="px-4 py-3 text-red-600">{s._count.delayLogs}</td>
+                        <td className="px-4 py-3 text-red-600">{s.delayLogs.length}</td>
                         <td className="px-4 py-3">
                           <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
                             s.status === "ACTIVE" ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-600"

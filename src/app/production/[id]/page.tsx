@@ -36,6 +36,15 @@ export default async function ProductionViewPage({ params }: { params: Promise<{
     ? getDurationMins(record.inTime, record.outTime)
     : null;
 
+  // Dynamic In/Out labels based on active machines in batch
+  const MACHINE_ORDER = ["Roycut-1", "Roymix", "Roycut-2", "Roycut-3"];
+  const activeMachines = record.batchRecipe?.entries
+    ?.map(e => e.machine.name)
+    .sort((a, b) => MACHINE_ORDER.indexOf(a) - MACHINE_ORDER.indexOf(b)) ?? MACHINE_ORDER;
+  const firstMachine = activeMachines[0] || "Roycut-1";
+  const lastMachine = activeMachines[activeMachines.length - 1] || "Roycut-3";
+  const hasRoymix = activeMachines.includes("Roymix");
+
   return (
     <div className="space-y-5 max-w-4xl">
       <div className="flex items-center justify-between">
@@ -60,7 +69,7 @@ export default async function ProductionViewPage({ params }: { params: Promise<{
           { label: "Program", value: record.batchRecipe?.programName ?? "—" },
           { label: "Thickness", value: record.thickness ? `${record.thickness} mm` : "—" },
           { label: "Total Duration", value: totalDuration !== null ? fmtMins(totalDuration) : "—" },
-          { label: "RoyMix Body Wt", value: record.roymixBodyWeight ? `${record.roymixBodyWeight} kg` : "—" },
+          ...(hasRoymix ? [{ label: "RoyMix Body Wt", value: record.roymixBodyWeight ? `${record.roymixBodyWeight} kg` : "—" }] : []),
         ].map(s => (
           <div key={s.label} className="bg-white rounded-xl border border-gray-200 px-4 py-3">
             <p className="text-xs text-gray-400 uppercase tracking-wide">{s.label}</p>
@@ -74,17 +83,19 @@ export default async function ProductionViewPage({ params }: { params: Promise<{
         <h2 className="font-semibold text-gray-800 mb-4">Machine Timing</h2>
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
           <div className="bg-blue-50 rounded-lg p-3">
-            <p className="text-xs text-blue-500 mb-1">In Time (Roycut-1)</p>
+            <p className="text-xs text-blue-500 mb-1">In Time ({firstMachine} entry)</p>
             <p className="text-lg font-bold text-blue-800">{record.inTime || "—"}</p>
           </div>
           <div className="bg-violet-50 rounded-lg p-3">
-            <p className="text-xs text-violet-500 mb-1">Out Time (Roycut-3)</p>
+            <p className="text-xs text-violet-500 mb-1">Out Time ({lastMachine} exit)</p>
             <p className="text-lg font-bold text-violet-800">{record.outTime || "—"}</p>
           </div>
+          {hasRoymix && (
           <div className="bg-emerald-50 rounded-lg p-3">
             <p className="text-xs text-emerald-500 mb-1">RoyMix Cycle Time</p>
             <p className="text-lg font-bold text-emerald-800">{record.roymixCycleTime ? `${record.roymixCycleTime}s` : "—"}</p>
           </div>
+          )}
         </div>
 
         {/* Shift cycle times */}
