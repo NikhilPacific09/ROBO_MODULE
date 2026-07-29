@@ -26,9 +26,6 @@ export async function POST(req: Request) {
       startTime:        body.startTime,
       operatorName:     body.operatorName || "",
       notes:            body.notes || null,
-      roycut1CycleTime: body.roycut1CycleTime ? Number(body.roycut1CycleTime) : null,
-      roycut2CycleTime: body.roycut2CycleTime ? Number(body.roycut2CycleTime) : null,
-      roycut3CycleTime: body.roycut3CycleTime ? Number(body.roycut3CycleTime) : null,
     },
   });
   return NextResponse.json(shift, { status: 201 });

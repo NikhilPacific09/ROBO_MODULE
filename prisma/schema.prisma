@@ -125,6 +125,7 @@ model BatchRecipeEntry {
 
 model ProductionRecord {
   id              String      @id @default(cuid())
+  serialNumber    Int?
   slabNumber      String
   shiftId         String
   shift           Shift       @relation(fields: [shiftId], references: [id])

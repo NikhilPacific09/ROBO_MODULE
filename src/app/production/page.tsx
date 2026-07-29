@@ -40,7 +40,7 @@ export default async function ProductionListPage() {
                 <td className="px-4 py-3 text-gray-600">{r.batchRecipe?.programName ?? "—"}</td>
                 <td className="px-4 py-3 text-gray-500">Shift {r.shift.shiftNumber}</td>
                 <td className="px-4 py-3 text-gray-500">{r.shift.date}</td>
-                <td className="px-4 py-3 text-gray-500">{r.batchRecipe?.thickness ? `${r.batchRecipe.thickness} mm` : "—"}</td>
+                <td className="px-4 py-3 text-gray-500">{r.batchRecipe?.thickness ? `${r.batchRecipe.thickness} cm` : "—"}</td>
                 <td className="px-4 py-3">
                   <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">
                     {r.status}

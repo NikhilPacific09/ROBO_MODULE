@@ -200,10 +200,12 @@ export default function DashboardClient({ activeShift, totalSlabs, totalDelayMin
                   <th className="text-left py-2 font-medium">Slabs</th>
                   <th className="text-left py-2 font-medium">Delay</th>
                   <th className="text-left py-2 font-medium">Status</th>
+                  <th className="text-left py-2 font-medium">Today&#39;s Delays</th>
                 </tr>
               </thead>
               <tbody>
-                {recentShifts.map(s => (
+                {recentShifts.map(s => {
+                  return (
                   <tr key={s.id} className="border-b border-gray-50 hover:bg-gray-50">
                     <td className="py-2 text-gray-700">{s.date}</td>
                     <td className="py-2 text-gray-700">{s.shiftNumber}</td>
@@ -215,8 +217,22 @@ export default function DashboardClient({ activeShift, totalSlabs, totalDelayMin
                         {s.status}
                       </span>
                     </td>
+                    <td className="py-2">
+                      <button
+                        onClick={() => {
+                          const a = document.createElement("a");
+                          a.href = `/api/delays/export?shiftId=${s.id}`;
+                          a.download = "";
+                          a.click();
+                        }}
+                        className="flex items-center gap-1 text-xs font-medium text-green-700 bg-green-50 hover:bg-green-100 border border-green-200 px-2.5 py-1 rounded-lg transition"
+                      >
+                        📥 Download
+                      </button>
+                    </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>

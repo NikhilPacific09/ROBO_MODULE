@@ -6,10 +6,9 @@ import Link from "next/link";
 interface Shift {
   id: string; shiftNumber: number; date: string; operatorName: string;
   startTime: string; endTime: string | null; status: string; notes: string | null;
-  roycut1CycleTime: number | null; roycut2CycleTime: number | null; roycut3CycleTime: number | null;
   batchRecipes: { id: string; designName: string; targetSlabs: number | null; thickness: number | null; entries: { machine: { name: string }; programName: string | null }[]; _count?: { productionRecords: number } }[];
   productionRecords: { id: string; slabNumber: string; inTime: string | null; outTime: string | null; roymixCycleTime: number | null; status: string; createdAt: string }[];
-  delayLogs: { id: string; durationMinutes: number; startTime: string | null; remarks: string | null; delayCode: { code: string; description: string; category: string } }[];
+  delayLogs: { id: string; durationMinutes: number; startTime: string | null; endTime: string | null; machineName: string | null; remarks: string | null; delayCode: { code: string; description: string; category: string } }[];
 }
 
 function fmtDelay(mins: number) {
@@ -135,24 +134,6 @@ export default function ShiftPage() {
         </div>
       </div>
 
-      {/* Cycle times */}
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
-        <h2 className="font-semibold text-gray-800 mb-3">Machine Cycle Times (Fixed This Shift)</h2>
-        <div className="grid grid-cols-4 gap-3">
-          {[
-            { label: "Roycut-1", val: shift.roycut1CycleTime, color: "bg-blue-50 text-blue-700" },
-            { label: "RoyMix", val: null, color: "bg-emerald-50 text-emerald-700", note: "Per slab" },
-            { label: "Roycut-2", val: shift.roycut2CycleTime, color: "bg-indigo-50 text-indigo-700" },
-            { label: "Roycut-3", val: shift.roycut3CycleTime, color: "bg-violet-50 text-violet-700" },
-          ].map(({ label, val, color, note }) => (
-            <div key={label} className={`rounded-lg p-3 text-center ${color}`}>
-              <p className="text-xs font-medium">{label}</p>
-              <p className="text-xl font-bold mt-1">{val ? `${val}s` : note ?? "—"}</p>
-            </div>
-          ))}
-        </div>
-      </div>
-
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         {/* Batches */}
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
@@ -173,7 +154,7 @@ export default function ShiftPage() {
                   <p className="text-xs text-gray-400 mt-0.5">
                     {b.entries.map(e => `${e.machine.name}: ${e.programName || "—"}`).join(" · ")}
                     {b.targetSlabs ? ` · Target: ${b.targetSlabs}` : ""}
-                    {b.thickness ? ` · Thickness: ${b.thickness}mm` : ""}
+                    {b.thickness ? ` · Thickness: ${b.thickness}cm` : ""}
                   </p>
                 </div>
               ))}
@@ -185,7 +166,22 @@ export default function ShiftPage() {
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
           <div className="flex justify-between items-center mb-3">
             <h2 className="font-semibold text-gray-800">Delays ({shift.delayLogs.length})</h2>
-            {shift.status === "ACTIVE" && <Link href="/production/new" className="text-xs text-blue-600 hover:underline">+ Log (via New Slab)</Link>}
+            <div className="flex items-center gap-3">
+              {shift.delayLogs.length > 0 && (
+                <button
+                  onClick={() => {
+                    const a = document.createElement("a");
+                    a.href = `/api/delays/export?shiftId=${shift.id}`;
+                    a.download = "";
+                    a.click();
+                  }}
+                  className="flex items-center gap-1.5 text-xs font-medium text-green-700 bg-green-50 hover:bg-green-100 border border-green-200 px-3 py-1.5 rounded-lg transition"
+                >
+                  📥 Download Excel
+                </button>
+              )}
+              {shift.status === "ACTIVE" && <Link href="/production/new" className="text-xs text-blue-600 hover:underline">+ Log (via New Slab)</Link>}
+            </div>
           </div>
           {shift.delayLogs.length === 0 ? (
             <p className="text-sm text-gray-400 py-2">No delays logged</p>
@@ -193,13 +189,23 @@ export default function ShiftPage() {
             <div className="space-y-2 max-h-48 overflow-y-auto">
               {shift.delayLogs.map(d => (
                 <div key={d.id} className="flex justify-between items-center py-1.5 border-b border-gray-50 last:border-0">
-                  <div>
-                    <span className="text-xs font-bold text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded">{d.delayCode.code}</span>
-                    <span className="text-xs text-gray-500 ml-2">{d.delayCode.description}</span>
+                  <div className="flex items-center gap-2 flex-1 min-w-0">
+                    <span className="text-xs font-bold text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded shrink-0">{d.delayCode.code}</span>
+                    <span className="text-xs text-gray-500 truncate">{d.delayCode.description}</span>
+                    {d.machineName && <span className="text-xs text-gray-400 shrink-0">· {d.machineName}</span>}
                   </div>
-                  <span className="text-xs font-medium text-red-500">{d.durationMinutes}m</span>
+                  <div className="flex items-center gap-3 shrink-0 ml-2">
+                    {d.startTime && d.endTime && <span className="text-xs text-gray-400">{d.startTime}–{d.endTime}</span>}
+                    <span className="text-xs font-medium text-red-500">{d.durationMinutes}m</span>
+                  </div>
                 </div>
               ))}
+            </div>
+          )}
+          {shift.delayLogs.length > 0 && (
+            <div className="mt-3 pt-3 border-t border-gray-100 flex justify-between items-center">
+              <span className="text-xs text-gray-500">Total Delay</span>
+              <span className="text-sm font-bold text-red-600">{fmtDelay(totalDelay)}</span>
             </div>
           )}
         </div>

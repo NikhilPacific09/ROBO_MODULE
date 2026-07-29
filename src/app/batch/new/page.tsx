@@ -153,7 +153,7 @@ export default function NewBatchPage() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Thickness (mm)</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Thickness (cm)</label>
               <input
                 type="number"
                 step="0.1"
@@ -219,48 +219,66 @@ export default function NewBatchPage() {
                   </div>
 
                   {isActive && (
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                      {/* Program Name — every active machine gets one */}
-                      <div className={isRoymix ? "col-span-2 md:col-span-3" : ""}>
-                        <label className="block text-xs text-gray-500 mb-1">Program Name</label>
-                        <input value={entry.programName}
-                          onChange={e => setEntry(m.id, "programName", e.target.value)}
-                          placeholder={`${m.name} program...`} className={inp} />
-                      </div>
-                      {!isRoymix && (
-                        <div>
-                          <label className="block text-xs text-gray-500 mb-1">Tool</label>
-                          <input value={entry.toolName}
-                            onChange={e => setEntry(m.id, "toolName", e.target.value)}
-                            placeholder="Type tool name..." className={inp} />
-                        </div>
-                      )}
-                      <div>
-                        <label className="block text-xs text-gray-500 mb-1">Liquid</label>
-                        <input value={entry.liquidName}
-                          onChange={e => setEntry(m.id, "liquidName", e.target.value)}
-                          placeholder="Type liquid name..." className={inp} />
-                      </div>
-                      {!isRoymix && (
-                        <>
-                          <div>
-                            <label className="block text-xs text-gray-500 mb-1">Powder</label>
-                            <input value={entry.powderName}
-                              onChange={e => setEntry(m.id, "powderName", e.target.value)}
-                              placeholder="Type powder name..." className={inp} />
+                    <div className="space-y-3">
+                      {isRoymix ? (
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                          <div className="col-span-2 md:col-span-3">
+                            <label className="block text-xs text-gray-500 mb-1">Program Name</label>
+                            <input value={entry.programName}
+                              onChange={e => setEntry(m.id, "programName", e.target.value)}
+                              placeholder={`${m.name} program...`} className={inp} />
                           </div>
-                          {!isRoycut3 && (
-                            <div>
-                              <label className="block text-xs text-gray-500 mb-1">Roller Height (mm)</label>
-                              <input value={entry.rollerHeight} onChange={e => setEntry(m.id, "rollerHeight", e.target.value)}
-                                placeholder="e.g. 20" className={inp} />
-                            </div>
-                          )}
                           <div>
-                            <label className="block text-xs text-gray-500 mb-1">Target Cycle Time (sec)</label>
-                            <input type="number" value={entry.targetCycleTime}
-                              onChange={e => setEntry(m.id, "targetCycleTime", e.target.value)}
-                              placeholder="e.g. 214" className={inp} />
+                            <label className="block text-xs text-gray-500 mb-1">Liquid</label>
+                            <input value={entry.liquidName}
+                              onChange={e => setEntry(m.id, "liquidName", e.target.value)}
+                              placeholder="Type liquid name..." className={inp} />
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          {/* Row 1: Program Name, Tool, Target Cycle Time */}
+                          <div className="grid grid-cols-3 gap-3">
+                            <div>
+                              <label className="block text-xs text-gray-500 mb-1">Program Name</label>
+                              <input value={entry.programName}
+                                onChange={e => setEntry(m.id, "programName", e.target.value)}
+                                placeholder={`${m.name} program...`} className={inp} />
+                            </div>
+                            <div>
+                              <label className="block text-xs text-gray-500 mb-1">Tool</label>
+                              <input value={entry.toolName}
+                                onChange={e => setEntry(m.id, "toolName", e.target.value)}
+                                placeholder="Type tool name..." className={inp} />
+                            </div>
+                            <div>
+                              <label className="block text-xs text-gray-500 mb-1">Target Cycle Time (sec)</label>
+                              <input type="number" value={entry.targetCycleTime}
+                                onChange={e => setEntry(m.id, "targetCycleTime", e.target.value)}
+                                placeholder="e.g. 214" className={inp} />
+                            </div>
+                          </div>
+                          {/* Row 2: Liquid, Powder, Roller Height */}
+                          <div className="grid grid-cols-3 gap-3">
+                            <div>
+                              <label className="block text-xs text-gray-500 mb-1">Liquid</label>
+                              <input value={entry.liquidName}
+                                onChange={e => setEntry(m.id, "liquidName", e.target.value)}
+                                placeholder="Type liquid name..." className={inp} />
+                            </div>
+                            <div>
+                              <label className="block text-xs text-gray-500 mb-1">Powder</label>
+                              <input value={entry.powderName}
+                                onChange={e => setEntry(m.id, "powderName", e.target.value)}
+                                placeholder="Type powder name..." className={inp} />
+                            </div>
+                            {!isRoycut3 && (
+                              <div>
+                                <label className="block text-xs text-gray-500 mb-1">Roller Height (mm)</label>
+                                <input value={entry.rollerHeight} onChange={e => setEntry(m.id, "rollerHeight", e.target.value)}
+                                  placeholder="e.g. 20" className={inp} />
+                              </div>
+                            )}
                           </div>
                         </>
                       )}

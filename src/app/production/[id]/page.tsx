@@ -67,7 +67,7 @@ export default async function ProductionViewPage({ params }: { params: Promise<{
         {[
           { label: "Design", value: record.batchRecipe?.designName ?? "—" },
           { label: "Program", value: record.batchRecipe?.programName ?? "—" },
-          { label: "Thickness", value: record.batchRecipe?.thickness ? `${record.batchRecipe.thickness} mm` : "—" },
+          { label: "Thickness", value: record.batchRecipe?.thickness ? `${record.batchRecipe.thickness} cm` : "—" },
           { label: "Total Duration", value: totalDuration !== null ? fmtMins(totalDuration) : "—" },
           ...(hasRoymix ? [{ label: "RoyMix Body Wt", value: record.roymixBodyWeight ? `${record.roymixBodyWeight} kg` : "—" }] : []),
         ].map(s => (
@@ -98,19 +98,6 @@ export default async function ProductionViewPage({ params }: { params: Promise<{
           )}
         </div>
 
-        {/* Shift cycle times */}
-        <div className="mt-4 grid grid-cols-3 gap-3">
-          {[
-            { label: "Roycut-1 CT (shift)", val: record.shift.roycut1CycleTime },
-            { label: "Roycut-2 CT (shift)", val: record.shift.roycut2CycleTime },
-            { label: "Roycut-3 CT (shift)", val: record.shift.roycut3CycleTime },
-          ].map(({ label, val }) => (
-            <div key={label} className="bg-gray-50 rounded-lg p-2 text-center">
-              <p className="text-xs text-gray-400">{label}</p>
-              <p className="text-sm font-semibold text-gray-600 mt-0.5">{val ? `${val}s` : "—"}</p>
-            </div>
-          ))}
-        </div>
       </div>
 
       {/* Batch recipe entries */}

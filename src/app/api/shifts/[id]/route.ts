@@ -20,9 +20,6 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   if (body.status)            data.status = body.status;
   if (body.endTime)           data.endTime = body.endTime;
   if (body.notes !== undefined) data.notes = body.notes;
-  if (body.roycut1CycleTime !== undefined) data.roycut1CycleTime = body.roycut1CycleTime ? Number(body.roycut1CycleTime) : null;
-  if (body.roycut2CycleTime !== undefined) data.roycut2CycleTime = body.roycut2CycleTime ? Number(body.roycut2CycleTime) : null;
-  if (body.roycut3CycleTime !== undefined) data.roycut3CycleTime = body.roycut3CycleTime ? Number(body.roycut3CycleTime) : null;
   const shift = await prisma.shift.update({ where: { id: params.id }, data });
   return NextResponse.json(shift);
 }

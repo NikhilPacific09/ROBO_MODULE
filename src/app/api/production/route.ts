@@ -18,6 +18,7 @@ export async function POST(req: Request) {
   const body = await req.json();
   const record = await prisma.productionRecord.create({
     data: {
+      serialNumber:    body.serialNumber ? Number(body.serialNumber) : null,
       slabNumber:      body.slabNumber,
       shiftId:         body.shiftId,
       batchRecipeId:   body.batchRecipeId || null,

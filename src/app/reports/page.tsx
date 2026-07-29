@@ -8,7 +8,6 @@ import {
 interface Shift {
   id: string; date: string; shiftNumber: number; operatorName: string; status: string;
   startTime: string; endTime: string | null;
-  roycut1CycleTime: number | null; roycut2CycleTime: number | null; roycut3CycleTime: number | null;
   productionRecords: { id: string }[];
   delayLogs: { id: string; durationMinutes: number }[];
 }
@@ -92,16 +91,6 @@ export default function ReportsPage() {
       delays: s.delayLogs.length,
     };
   });
-
-  // Machine cycle time data (only shifts with actual data)
-  const cycleTimeData = last10
-    .filter(s => s.roycut1CycleTime || s.roycut2CycleTime || s.roycut3CycleTime)
-    .map(s => ({
-      name: `S${s.shiftNumber}`,
-      "Roycut-1": s.roycut1CycleTime || null,
-      "Roycut-2": s.roycut2CycleTime || null,
-      "Roycut-3": s.roycut3CycleTime || null,
-    }));
 
   // Delay analysis
   const delayCatMap: Record<string, number> = {};
@@ -248,27 +237,6 @@ export default function ReportsPage() {
       {/* ── Tab: Machine Performance ── */}
       {tab === "machine" && (
         <div className="space-y-6">
-          {cycleTimeData.length > 0 ? (
-            <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
-              <h2 className="font-semibold text-gray-800 mb-4">Roycut Cycle Times (sec)</h2>
-              <ResponsiveContainer width="100%" height={300}>
-                <LineChart data={cycleTimeData}>
-                  <XAxis dataKey="name" tick={{ fontSize: 11 }} />
-                  <YAxis tick={{ fontSize: 11 }} />
-                  <Tooltip contentStyle={{ borderRadius: "8px" }} />
-                  <Legend />
-                  <Line type="monotone" dataKey="Roycut-1" stroke="#3b82f6" strokeWidth={2} dot={{ r: 4 }} connectNulls />
-                  <Line type="monotone" dataKey="Roycut-2" stroke="#10b981" strokeWidth={2} dot={{ r: 4 }} connectNulls />
-                  <Line type="monotone" dataKey="Roycut-3" stroke="#f59e0b" strokeWidth={2} dot={{ r: 4 }} connectNulls />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          ) : (
-            <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-8 text-center text-gray-400">
-              No cycle time data recorded yet. Cycle times are set during shift start.
-            </div>
-          )}
-
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
             <h2 className="font-semibold text-gray-800 mb-4">Downtime by Machine</h2>
             {machineDelayData.length > 0 ? (
