@@ -1,9 +1,18 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 
 const MACHINE_ORDER = ["Roycut-1", "Roymix", "Roycut-2", "Roycut-3"];
 
+const CATEGORY_COLOR: Record<string, string> = {
+  ROBOT: "bg-blue-100 text-blue-700", MAINTENANCE: "bg-orange-100 text-orange-700",
+  ROYMIX: "bg-emerald-100 text-emerald-700", LINE: "bg-slate-100 text-slate-700",
+  DISTRIBUTOR: "bg-purple-100 text-purple-700", PRESS: "bg-rose-100 text-rose-700",
+  GENERAL: "bg-gray-100 text-gray-700", POWERCUT: "bg-red-100 text-red-700", LINE_START: "bg-teal-100 text-teal-700",
+};
+
+interface DelayCode { id: string; code: string; description: string; category: string; isRobotSpecific: boolean; }
+interface MachineItem { id: string; name: string; type: string; }
 interface BatchEntry {
   machine: { name: string };
   programName: string | null;
@@ -19,20 +28,52 @@ interface ActiveShift {
   batchRecipes: BatchRecipe[];
 }
 
+interface PendingDelay {
+  tempId: number;
+  delayCodeId: string;
+  code: string;
+  description: string;
+  category: string;
+  machineId: string;
+  machineName: string;
+  durationMinutes: string;
+  startTime: string;
+  endTime: string;
+  remarks: string;
+}
+
 export default function NewSlabPage() {
   const router = useRouter();
   const [shift, setShift] = useState<ActiveShift | null>(null);
+  const [delayCodes, setDelayCodes] = useState<DelayCode[]>([]);
+  const [machines, setMachines] = useState<MachineItem[]>([]);
   const [form, setForm] = useState({
     slabNumber: "", inTime: "", outTime: "",
-    roymixCycleTime: "", roymixBodyWeight: "", thickness: "", remarks: "",
+    roymixCycleTime: "", roymixBodyWeight: "", remarks: "",
   });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+
+  // Delay state
+  const [delays, setDelays] = useState<PendingDelay[]>([]);
+  const [delayOpen, setDelayOpen] = useState(false);
+  const [delayForm, setDelayForm] = useState({
+    codeInput: "", machineId: "", machineName: "", durationMinutes: "", startTime: "", endTime: "", remarks: "",
+  });
+  const [delayError, setDelayError] = useState("");
+  let nextTempId = delays.length > 0 ? Math.max(...delays.map(d => d.tempId)) + 1 : 1;
+
+  const matchedCode = useMemo(() =>
+    delayCodes.find(d => d.code.toUpperCase() === delayForm.codeInput.toUpperCase().trim()),
+    [delayCodes, delayForm.codeInput]
+  );
 
   useEffect(() => {
     fetch("/api/shifts/active").then(r => r.ok ? r.json() : null).then(s => {
       if (s) setShift(s);
     });
+    fetch("/api/delay-codes").then(r => r.json()).then(setDelayCodes);
+    fetch("/api/machines").then(r => r.json()).then(setMachines);
   }, []);
 
   const set = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }));
@@ -54,6 +95,39 @@ export default function NewSlabPage() {
   const lastMachine = activeRoycuts[activeRoycuts.length - 1] || activeMachineNames[activeMachineNames.length - 1] || "—";
   const hasRoymix = activeMachineNames.includes("Roymix");
 
+  const setDelayMachine = (machineId: string) => {
+    const m = machines.find(x => x.id === machineId);
+    setDelayForm(p => ({ ...p, machineId, machineName: m?.name || "" }));
+  };
+
+  const addDelay = () => {
+    setDelayError("");
+    if (!matchedCode) { setDelayError("Invalid delay code."); return; }
+    if (!delayForm.durationMinutes) { setDelayError("Duration is required."); return; }
+    if (matchedCode.isRobotSpecific && !delayForm.machineId) { setDelayError("This code requires a machine."); return; }
+
+    setDelays(prev => [...prev, {
+      tempId: nextTempId,
+      delayCodeId: matchedCode.id,
+      code: matchedCode.code,
+      description: matchedCode.description,
+      category: matchedCode.category,
+      machineId: delayForm.machineId,
+      machineName: delayForm.machineName,
+      durationMinutes: delayForm.durationMinutes,
+      startTime: delayForm.startTime,
+      endTime: delayForm.endTime,
+      remarks: delayForm.remarks,
+    }]);
+    setDelayForm({ codeInput: "", machineId: "", machineName: "", durationMinutes: "", startTime: "", endTime: "", remarks: "" });
+  };
+
+  const removeDelay = (tempId: number) => {
+    setDelays(prev => prev.filter(d => d.tempId !== tempId));
+  };
+
+  const totalDelay = delays.reduce((s, d) => s + (Number(d.durationMinutes) || 0), 0);
+
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!shift) { setError("No active shift."); return; }
@@ -69,9 +143,17 @@ export default function NewSlabPage() {
         outTime:          form.outTime || null,
         roymixCycleTime:  form.roymixCycleTime ? Number(form.roymixCycleTime) : null,
         roymixBodyWeight: form.roymixBodyWeight ? Number(form.roymixBodyWeight) : null,
-        thickness:        form.thickness ? Number(form.thickness) : null,
         remarks:          form.remarks || null,
         status:           "COMPLETED",
+        delays: delays.map(d => ({
+          delayCodeId:     d.delayCodeId,
+          machineId:       d.machineId || null,
+          machineName:     d.machineName || null,
+          durationMinutes: Number(d.durationMinutes),
+          startTime:       d.startTime || null,
+          endTime:         d.endTime || null,
+          remarks:         d.remarks || null,
+        })),
       }),
     });
     if (!res.ok) { setError("Failed to save record."); setSubmitting(false); return; }
@@ -103,17 +185,10 @@ export default function NewSlabPage() {
         {/* Slab Details */}
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
           <h2 className="font-semibold text-gray-800 mb-4">Slab Details</h2>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Slab Number <span className="text-red-500">*</span></label>
-              <input value={form.slabNumber} onChange={e => set("slabNumber", e.target.value)}
-                placeholder="e.g. 140748" className={inp} required autoFocus />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Thickness (mm)</label>
-              <input type="number" step="0.1" value={form.thickness} onChange={e => set("thickness", e.target.value)}
-                placeholder="e.g. 9.5" className={inp} />
-            </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Slab Number <span className="text-red-500">*</span></label>
+            <input value={form.slabNumber} onChange={e => set("slabNumber", e.target.value)}
+              placeholder="e.g. 140748" className={inp} required autoFocus />
           </div>
         </div>
 
@@ -191,6 +266,112 @@ export default function NewSlabPage() {
           <label className="block text-sm font-medium text-gray-700 mb-1">Remarks</label>
           <input value={form.remarks} onChange={e => set("remarks", e.target.value)}
             placeholder="Optional notes for this slab" className={inp} />
+        </div>
+
+        {/* Delay Logging Section */}
+        <div className="bg-white rounded-xl border border-orange-200 shadow-sm">
+          <button type="button" onClick={() => setDelayOpen(o => !o)}
+            className="w-full flex items-center justify-between p-5">
+            <div className="flex items-center gap-2">
+              <span className="text-lg">⏱</span>
+              <h2 className="font-semibold text-gray-800">Delay Log</h2>
+              {delays.length > 0 && (
+                <span className="text-xs font-medium bg-red-100 text-red-700 px-2 py-0.5 rounded-full">
+                  {delays.length} delay{delays.length !== 1 ? "s" : ""} · {totalDelay} min
+                </span>
+              )}
+            </div>
+            <span className="text-sm text-gray-400">{delayOpen ? "▲" : "▼"}</span>
+          </button>
+
+          {delayOpen && (
+            <div className="px-5 pb-5 space-y-4 border-t border-orange-100 pt-4">
+              {/* Added delays list */}
+              {delays.length > 0 && (
+                <div className="space-y-2">
+                  {delays.map(d => (
+                    <div key={d.tempId} className="flex items-center gap-3 bg-red-50 rounded-lg px-4 py-2">
+                      <span className="text-xs font-bold text-red-700 w-10">{d.code}</span>
+                      <span className={`text-xs px-1.5 py-0.5 rounded ${CATEGORY_COLOR[d.category] || "bg-gray-100 text-gray-600"}`}>{d.category}</span>
+                      {d.machineName && <span className="text-xs text-gray-500">{d.machineName}</span>}
+                      <span className="text-sm text-gray-700 flex-1">{d.description}</span>
+                      <span className="text-xs font-medium text-red-600">{d.durationMinutes} min</span>
+                      {d.startTime && d.endTime && <span className="text-xs text-gray-400">{d.startTime}–{d.endTime}</span>}
+                      <button type="button" onClick={() => removeDelay(d.tempId)} className="text-xs text-red-300 hover:text-red-600">✕</button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Add delay form */}
+              <div className="space-y-3 bg-orange-50 rounded-lg p-4">
+                {delayError && <div className="bg-red-50 border border-red-300 text-red-700 text-xs px-3 py-2 rounded-lg">{delayError}</div>}
+
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Delay Code</label>
+                  <input value={delayForm.codeInput}
+                    onChange={e => setDelayForm(p => ({ ...p, codeInput: e.target.value.toUpperCase() }))}
+                    placeholder="e.g. C1, M3, RM5, T1" className={inp} autoComplete="off" />
+                  {delayForm.codeInput && (
+                    <div className={`mt-1.5 px-3 py-1.5 rounded-lg text-xs ${matchedCode ? "bg-green-50 border border-green-200 text-green-800" : "bg-red-50 border border-red-200 text-red-700"}`}>
+                      {matchedCode ? (
+                        <span>✓ <strong>{matchedCode.code}</strong> — {matchedCode.description}
+                          <span className={`ml-2 px-1.5 py-0.5 rounded ${CATEGORY_COLOR[matchedCode.category] || "bg-gray-100 text-gray-600"}`}>{matchedCode.category}</span>
+                        </span>
+                      ) : "✗ Code not found."}
+                    </div>
+                  )}
+                </div>
+
+                {matchedCode?.isRobotSpecific && (
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Machine</label>
+                    <select value={delayForm.machineId} onChange={e => setDelayMachine(e.target.value)} className={inp}>
+                      <option value="">Select Machine</option>
+                      {machines.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+                    </select>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-3 gap-3">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Duration (min)</label>
+                    <input type="number" min="1" value={delayForm.durationMinutes}
+                      onChange={e => setDelayForm(p => ({ ...p, durationMinutes: e.target.value }))}
+                      placeholder="e.g. 4" className={inp} />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Start Time</label>
+                    <input type="time" value={delayForm.startTime}
+                      onChange={e => setDelayForm(p => ({ ...p, startTime: e.target.value }))} className={inp} />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">End Time</label>
+                    <input type="time" value={delayForm.endTime}
+                      onChange={e => setDelayForm(p => ({ ...p, endTime: e.target.value }))} className={inp} />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Delay Remarks</label>
+                  <input value={delayForm.remarks}
+                    onChange={e => setDelayForm(p => ({ ...p, remarks: e.target.value }))}
+                    placeholder="Optional notes for this delay" className={inp} />
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <a href="/masters/delay-codes" target="_blank"
+                    className="text-xs text-blue-600 hover:text-blue-800 hover:underline">
+                    View All Delay Codes →
+                  </a>
+                  <button type="button" onClick={addDelay}
+                    className="px-4 py-2 bg-orange-600 text-white rounded-lg text-sm font-medium hover:bg-orange-700 transition">
+                    + Add Delay
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="flex justify-end gap-3">

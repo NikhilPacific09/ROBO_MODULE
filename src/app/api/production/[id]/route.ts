@@ -18,7 +18,6 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   if (body.inTime !== undefined)          data.inTime = body.inTime;
   if (body.outTime !== undefined)         data.outTime = body.outTime;
   if (body.roymixCycleTime !== undefined) data.roymixCycleTime = body.roymixCycleTime ? Number(body.roymixCycleTime) : null;
-  if (body.thickness !== undefined)       data.thickness = body.thickness ? Number(body.thickness) : null;
   const record = await prisma.productionRecord.update({ where: { id: params.id }, data });
   return NextResponse.json(record);
 }

@@ -7,8 +7,8 @@ interface Shift {
   id: string; shiftNumber: number; date: string; operatorName: string;
   startTime: string; endTime: string | null; status: string; notes: string | null;
   roycut1CycleTime: number | null; roycut2CycleTime: number | null; roycut3CycleTime: number | null;
-  batchRecipes: { id: string; designName: string; targetSlabs: number | null; entries: { machine: { name: string }; programName: string | null }[]; _count?: { productionRecords: number } }[];
-  productionRecords: { id: string; slabNumber: string; inTime: string | null; outTime: string | null; roymixCycleTime: number | null; thickness: number | null; status: string; createdAt: string }[];
+  batchRecipes: { id: string; designName: string; targetSlabs: number | null; thickness: number | null; entries: { machine: { name: string }; programName: string | null }[]; _count?: { productionRecords: number } }[];
+  productionRecords: { id: string; slabNumber: string; inTime: string | null; outTime: string | null; roymixCycleTime: number | null; status: string; createdAt: string }[];
   delayLogs: { id: string; durationMinutes: number; startTime: string | null; remarks: string | null; delayCode: { code: string; description: string; category: string } }[];
 }
 
@@ -103,25 +103,15 @@ export default function ShiftPage() {
             </div>
           </Link>
 
-          {/* Secondary actions row */}
-          <div className="grid grid-cols-2 gap-4 mt-0">
-            <Link href="/production/new"
-              className="flex items-center gap-3 bg-white hover:bg-blue-50 border border-blue-200 text-blue-700 rounded-xl p-4 transition">
-              <span className="text-2xl">➕</span>
-              <div>
-                <p className="font-semibold">Log Slab</p>
-                <p className="text-xs text-blue-400">Record produced slab</p>
-              </div>
-            </Link>
-            <Link href="/delays"
-              className="flex items-center gap-3 bg-white hover:bg-orange-50 border border-orange-200 text-orange-700 rounded-xl p-4 transition">
-              <span className="text-2xl">⏱️</span>
-              <div>
-                <p className="font-semibold">Log Delay</p>
-                <p className="text-xs text-orange-400">Record downtime</p>
-              </div>
-            </Link>
-          </div>
+          {/* Secondary action */}
+          <Link href="/production/new"
+            className="flex items-center gap-3 bg-white hover:bg-blue-50 border border-blue-200 text-blue-700 rounded-xl p-4 transition mt-0">
+            <span className="text-2xl">➕</span>
+            <div>
+              <p className="font-semibold">Log Slab + Delays</p>
+              <p className="text-xs text-blue-400">Record produced slab with optional delay logging</p>
+            </div>
+          </Link>
         </>
       )}
 
@@ -183,6 +173,7 @@ export default function ShiftPage() {
                   <p className="text-xs text-gray-400 mt-0.5">
                     {b.entries.map(e => `${e.machine.name}: ${e.programName || "—"}`).join(" · ")}
                     {b.targetSlabs ? ` · Target: ${b.targetSlabs}` : ""}
+                    {b.thickness ? ` · Thickness: ${b.thickness}mm` : ""}
                   </p>
                 </div>
               ))}
@@ -194,7 +185,7 @@ export default function ShiftPage() {
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
           <div className="flex justify-between items-center mb-3">
             <h2 className="font-semibold text-gray-800">Delays ({shift.delayLogs.length})</h2>
-            {shift.status === "ACTIVE" && <Link href="/delays" className="text-xs text-blue-600 hover:underline">+ Log</Link>}
+            {shift.status === "ACTIVE" && <Link href="/production/new" className="text-xs text-blue-600 hover:underline">+ Log (via New Slab)</Link>}
           </div>
           {shift.delayLogs.length === 0 ? (
             <p className="text-sm text-gray-400 py-2">No delays logged</p>
@@ -231,7 +222,6 @@ export default function ShiftPage() {
                   <th className="text-left py-2 font-medium">In Time</th>
                   <th className="text-left py-2 font-medium">Out Time</th>
                   <th className="text-left py-2 font-medium">RoyMix CT</th>
-                  <th className="text-left py-2 font-medium">Thickness</th>
                   <th className="text-left py-2 font-medium">Status</th>
                 </tr>
               </thead>
@@ -244,7 +234,6 @@ export default function ShiftPage() {
                     <td className="py-2 text-gray-600">{r.inTime || "—"}</td>
                     <td className="py-2 text-gray-600">{r.outTime || "—"}</td>
                     <td className="py-2 text-gray-600">{r.roymixCycleTime ? `${r.roymixCycleTime}s` : "—"}</td>
-                    <td className="py-2 text-gray-600">{r.thickness ? `${r.thickness}mm` : "—"}</td>
                     <td className="py-2">
                       <span className={`px-2 py-0.5 rounded-full text-xs ${
                         r.status === "COMPLETED" ? "bg-green-100 text-green-700" :

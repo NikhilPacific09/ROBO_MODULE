@@ -21,7 +21,7 @@ export default function NewBatchPage() {
   const [activeMachines, setActiveMachines] = useState<Record<string, boolean>>({});
 
   const [form, setForm] = useState({
-    shiftId: "", designName: "", targetSlabs: "", notes: "",
+    shiftId: "", designName: "", targetSlabs: "", thickness: "", notes: "",
     entries: {} as Record<string, {
       programName: string; toolName: string; liquidName: string; powderName: string;
       rollerHeight: string; targetCycleTime: string;
@@ -98,6 +98,7 @@ export default function NewBatchPage() {
         shiftId: form.shiftId,
         designName: form.designName.trim(),
         targetSlabs: form.targetSlabs ? Number(form.targetSlabs) : null,
+        thickness: form.thickness ? Number(form.thickness) : null,
         notes: form.notes || null,
         entries,
       }),
@@ -151,6 +152,17 @@ export default function NewBatchPage() {
                 className={inp}
               />
             </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Thickness (mm)</label>
+              <input
+                type="number"
+                step="0.1"
+                value={form.thickness}
+                onChange={e => setForm(p => ({ ...p, thickness: e.target.value }))}
+                placeholder="e.g. 9.5"
+                className={inp}
+              />
+            </div>
             <div className="col-span-2">
               <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
               <input
@@ -180,6 +192,7 @@ export default function NewBatchPage() {
                 rollerHeight: "", targetCycleTime: "",
               };
               const isRoymix = m.name === "Roymix";
+              const isRoycut3 = m.name === "Roycut-3";
               const isActive = activeMachines[m.id] ?? true;
 
               return (
@@ -236,11 +249,13 @@ export default function NewBatchPage() {
                               onChange={e => setEntry(m.id, "powderName", e.target.value)}
                               placeholder="Type powder name..." className={inp} />
                           </div>
-                          <div>
-                            <label className="block text-xs text-gray-500 mb-1">Roller Height (mm)</label>
-                            <input value={entry.rollerHeight} onChange={e => setEntry(m.id, "rollerHeight", e.target.value)}
-                              placeholder="e.g. 20" className={inp} />
-                          </div>
+                          {!isRoycut3 && (
+                            <div>
+                              <label className="block text-xs text-gray-500 mb-1">Roller Height (mm)</label>
+                              <input value={entry.rollerHeight} onChange={e => setEntry(m.id, "rollerHeight", e.target.value)}
+                                placeholder="e.g. 20" className={inp} />
+                            </div>
+                          )}
                           <div>
                             <label className="block text-xs text-gray-500 mb-1">Target Cycle Time (sec)</label>
                             <input type="number" value={entry.targetCycleTime}

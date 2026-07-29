@@ -67,7 +67,7 @@ export default async function ProductionViewPage({ params }: { params: Promise<{
         {[
           { label: "Design", value: record.batchRecipe?.designName ?? "—" },
           { label: "Program", value: record.batchRecipe?.programName ?? "—" },
-          { label: "Thickness", value: record.thickness ? `${record.thickness} mm` : "—" },
+          { label: "Thickness", value: record.batchRecipe?.thickness ? `${record.batchRecipe.thickness} mm` : "—" },
           { label: "Total Duration", value: totalDuration !== null ? fmtMins(totalDuration) : "—" },
           ...(hasRoymix ? [{ label: "RoyMix Body Wt", value: record.roymixBodyWeight ? `${record.roymixBodyWeight} kg` : "—" }] : []),
         ].map(s => (

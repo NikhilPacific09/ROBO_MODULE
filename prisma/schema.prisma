@@ -100,6 +100,7 @@ model BatchRecipe {
    designName   String   @default("")
    programName  String   @default("")
    targetSlabs  Int?
+   thickness    Float?
    notes        String?
    createdAt    DateTime @default(now())
    entries           BatchRecipeEntry[]

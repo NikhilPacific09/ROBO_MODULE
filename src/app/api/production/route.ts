@@ -25,11 +25,30 @@ export async function POST(req: Request) {
       outTime:         body.outTime || null,
       roymixCycleTime:  body.roymixCycleTime ? Number(body.roymixCycleTime) : null,
       roymixBodyWeight: body.roymixBodyWeight ? Number(body.roymixBodyWeight) : null,
-      thickness:        body.thickness ? Number(body.thickness) : null,
       status:          body.status || "COMPLETED",
       remarks:         body.remarks || null,
     },
     include: { batchRecipe: true, shift: true },
   });
+
+  // Create delay logs linked to this production record
+  if (Array.isArray(body.delays) && body.delays.length > 0) {
+    for (const d of body.delays) {
+      await prisma.delayLog.create({
+        data: {
+          shiftId:            body.shiftId,
+          productionRecordId: record.id,
+          machineId:          d.machineId || null,
+          machineName:        d.machineName || null,
+          delayCodeId:        d.delayCodeId,
+          durationMinutes:    Number(d.durationMinutes),
+          startTime:          d.startTime || null,
+          endTime:            d.endTime || null,
+          remarks:            d.remarks || null,
+        },
+      });
+    }
+  }
+
   return NextResponse.json(record, { status: 201 });
 }

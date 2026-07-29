@@ -40,6 +40,7 @@ export async function POST(req: Request) {
         designName:  body.designName?.trim() || "",
         programName: "", // no longer global — stored per machine entry
         targetSlabs: body.targetSlabs ? Number(body.targetSlabs) : null,
+        thickness:   body.thickness ? Number(body.thickness) : null,
         notes:       body.notes || null,
         entries: {
           create: (body.entries || []).map((e: {
